@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import type {
   KeywordAnalysisInput,
   KeywordAnalysisResult,
+  KeywordFetchAutoResponse,
   KeywordHistoryResponse,
   LoginInput,
   MyProductsResponse,
@@ -132,6 +133,11 @@ export function logout() {
 
 export async function analyzeKeyword(input: KeywordAnalysisInput): Promise<KeywordAnalysisResult> {
   const { data } = await client.post<KeywordAnalysisResult>("/keywords/analyze", input);
+  return data;
+}
+
+export async function fetchKeywordAuto(keyword: string): Promise<KeywordFetchAutoResponse> {
+  const { data } = await client.post<KeywordFetchAutoResponse>("/keywords/fetch-auto", { keyword });
   return data;
 }
 

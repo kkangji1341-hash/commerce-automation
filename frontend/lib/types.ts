@@ -107,6 +107,16 @@ export interface MyProductsResponse {
   total: number;
 }
 
+export interface KeywordFetchAutoResponse {
+  keyword: string;
+  search_trend: number[];
+  trend_source: string;
+  monthly_searches: number | null;
+  monthly_searches_source: string | null;
+  status: "success" | "partial_success" | "failed";
+  message: string;
+}
+
 // 히스토리에서 키워드를 재선택할 때 /products/recommend 재호출에 필요한
 // 원본 입력값. 백엔드가 분석 결과만 저장하고 원본 입력은 저장하지 않기 때문에
 // 프론트에서 localStorage에 별도로 캐싱해서 보완한다.

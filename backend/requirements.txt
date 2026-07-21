@@ -14,3 +14,5 @@ httpx==0.25.1
 aiosqlite==0.19.0
 asyncpg==0.29.0
 python-dotenv==1.0.0
+pytrends>=4.9.2
+pandas>=2.0

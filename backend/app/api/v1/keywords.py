@@ -12,8 +12,10 @@ from app.schemas.keyword import (
     KeywordAnalysisHistoryResponse,
     KeywordAnalysisRequest,
     KeywordAnalysisResponse,
+    KeywordFetchAutoRequest,
+    KeywordFetchAutoResponse,
 )
-from app.services.keyword_service import analyze_and_save, get_history
+from app.services.keyword_service import analyze_and_save, fetch_auto, get_history
 
 router = APIRouter()
 
@@ -27,6 +29,11 @@ async def analyze_keyword(
     user_id = current_user.id if current_user else None
     record = await analyze_and_save(db, request, user_id=user_id)
     return record
+
+
+@router.post("/fetch-auto", response_model=KeywordFetchAutoResponse)
+async def fetch_keyword_auto(request: KeywordFetchAutoRequest):
+    return await fetch_auto(request.keyword)
 
 
 @router.get("/history", response_model=KeywordAnalysisHistoryResponse)

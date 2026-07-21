@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import toast from "react-hot-toast";
 import Button from "@/components/Common/Button";
+import { fetchKeywordAuto } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 import type { KeywordAnalysisInput } from "@/lib/types";
 
 const SAMPLE_DATA: KeywordAnalysisInput = {
@@ -29,6 +32,14 @@ export default function KeywordForm({
   initial,
   submitLabel = "키워드 분석하기",
 }: KeywordFormProps) {
+  const [mode, setMode] = useState<"manual" | "auto">("manual");
+  const [isFetchingAuto, setIsFetchingAuto] = useState(false);
+  const [autoStatus, setAutoStatus] = useState<{
+    trendCollected: boolean;
+    searchesCollected: boolean;
+    message: string;
+  } | null>(null);
+
   const [keyword, setKeyword] = useState(initial?.keyword ?? "");
   const [monthlySearches, setMonthlySearches] = useState(initial?.monthly_searches ?? 0);
   const [numTopSellers, setNumTopSellers] = useState(initial?.num_top_sellers ?? 0);
@@ -45,6 +56,36 @@ export default function KeywordForm({
     setAvgListingPrice(SAMPLE_DATA.avg_listing_price);
     setSearchTrend(SAMPLE_DATA.search_trend);
     setReviewCounts(SAMPLE_DATA.review_count_top_10);
+  }
+
+  async function handleAutoFetch() {
+    if (!keyword.trim()) {
+      toast.error("키워드를 먼저 입력해주세요");
+      return;
+    }
+    setIsFetchingAuto(true);
+    setAutoStatus(null);
+    try {
+      const res = await fetchKeywordAuto(keyword);
+      if (res.status === "failed" || res.search_trend.length === 0) {
+        toast.error(res.message || "자동 수집에 실패했습니다");
+        return;
+      }
+      setSearchTrend(res.search_trend);
+      if (res.monthly_searches !== null) {
+        setMonthlySearches(res.monthly_searches);
+      }
+      setAutoStatus({
+        trendCollected: true,
+        searchesCollected: res.monthly_searches !== null,
+        message: res.message,
+      });
+      toast.success("Google Trends 데이터를 가져왔습니다");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "자동 수집에 실패했습니다"));
+    } finally {
+      setIsFetchingAuto(false);
+    }
   }
 
   function updateTrend(idx: number, value: number) {
@@ -67,6 +108,8 @@ export default function KeywordForm({
     });
   }
 
+  const needsManualSearches = mode === "auto" && !(autoStatus?.searchesCollected ?? false);
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
@@ -80,20 +123,62 @@ export default function KeywordForm({
         </button>
       </div>
 
+      <div className="flex gap-4 rounded-lg bg-gray-50 p-3 text-sm">
+        <label className="flex items-center gap-1.5">
+          <input
+            type="radio"
+            checked={mode === "manual"}
+            onChange={() => setMode("manual")}
+          />
+          수동 입력
+        </label>
+        <label className="flex items-center gap-1.5">
+          <input type="radio" checked={mode === "auto"} onChange={() => setMode("auto")} />
+          자동 수집 (Google Trends)
+        </label>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="mb-1 block text-sm font-medium text-gray-700">키워드</label>
-          <input
-            required
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="예: 무선 이어폰"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          />
+          <div className="flex gap-2">
+            <input
+              required
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="예: 무선 이어폰"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+            {mode === "auto" && (
+              <Button
+                type="button"
+                variant="secondary"
+                isLoading={isFetchingAuto}
+                onClick={handleAutoFetch}
+                className="shrink-0 whitespace-nowrap"
+              >
+                자동 수집
+              </Button>
+            )}
+          </div>
+          {mode === "auto" && autoStatus && (
+            <p className="mt-2 text-xs text-gray-500">
+              {autoStatus.trendCollected && "✓ 검색 트렌드(12개월) 자동 수집됨. "}
+              {!autoStatus.searchesCollected &&
+                "월간 검색량 등 나머지 값은 네이버 API 미연동으로 자동 수집이 안 됩니다 — 아래 값을 직접 입력해주세요."}
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">월간 검색량</label>
+          <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            월간 검색량
+            {needsManualSearches && (
+              <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
+                직접 입력 필요
+              </span>
+            )}
+          </label>
           <input
             type="number"
             required
@@ -105,7 +190,14 @@ export default function KeywordForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">상위 판매자 수</label>
+          <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            상위 판매자 수
+            {mode === "auto" && (
+              <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
+                직접 입력 필요
+              </span>
+            )}
+          </label>
           <input
             type="number"
             required
@@ -117,7 +209,14 @@ export default function KeywordForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">평균 판매가 (₩)</label>
+          <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            평균 판매가 (₩)
+            {mode === "auto" && (
+              <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
+                직접 입력 필요
+              </span>
+            )}
+          </label>
           <input
             type="number"
             required
@@ -130,8 +229,13 @@ export default function KeywordForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
+        <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
           지난 12개월 트렌드 <span className="text-gray-400">(0-100)</span>
+          {mode === "auto" && autoStatus?.trendCollected && (
+            <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-normal text-green-700">
+              자동 수집됨
+            </span>
+          )}
         </label>
         <div className="grid grid-cols-6 gap-2 sm:grid-cols-12">
           {searchTrend.map((v, i) => (
@@ -150,8 +254,13 @@ export default function KeywordForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
+        <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
           상위 10개 상품 리뷰 수
+          {mode === "auto" && (
+            <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
+              직접 입력 필요
+            </span>
+          )}
         </label>
         <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
           {reviewCounts.map((v, i) => (

@@ -1,13 +1,18 @@
 """keyword_analysis_engine.py와 연동하는 서비스"""
 
+import asyncio
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crawlers.keyword_crawler import fetch_keyword_data
 from app.models.keyword import KeywordAnalysis as KeywordAnalysisModel
-from app.schemas.keyword import KeywordAnalysisRequest
+from app.schemas.keyword import KeywordAnalysisRequest, KeywordFetchAutoResponse
 from app.services.keyword_analysis_engine import KeywordAnalysisEngine, KeywordData
 
 engine = KeywordAnalysisEngine()
+logger = logging.getLogger(__name__)
 
 
 async def analyze_and_save(
@@ -49,3 +54,42 @@ async def get_history(
         stmt = stmt.where(KeywordAnalysisModel.user_id == user_id)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+async def fetch_auto(keyword: str) -> KeywordFetchAutoResponse:
+    """
+    크롤러(keyword_crawler)로 실제 수집 가능한 데이터만 가져온다.
+    크롤링 자체가 실패해도(Google Trends 차단/레이트리밋 등) 500을 던지지 않고
+    status="failed"로 부분 응답한다.
+    """
+    try:
+        # pytrends는 동기(blocking) HTTP 호출이라 이벤트 루프를 막지 않도록 스레드에서 실행
+        result = await asyncio.to_thread(fetch_keyword_data, keyword)
+    except Exception as exc:
+        logger.warning("keyword auto-fetch failed for %r: %s", keyword, exc)
+        return KeywordFetchAutoResponse(
+            keyword=keyword,
+            search_trend=[],
+            trend_source="google_trends",
+            monthly_searches=None,
+            monthly_searches_source=None,
+            status="failed",
+            message=f"자동 수집에 실패했습니다: {exc}",
+        )
+
+    if result.monthly_searches is not None:
+        status = "success"
+        message = "모든 데이터가 자동으로 수집되었습니다."
+    else:
+        status = "partial_success"
+        message = "Google Trends 데이터만 수집됨. 월간 검색량은 네이버 API 연동 필요 (직접 입력해주세요)."
+
+    return KeywordFetchAutoResponse(
+        keyword=result.keyword,
+        search_trend=result.search_trend,
+        trend_source=result.trend_source,
+        monthly_searches=result.monthly_searches,
+        monthly_searches_source=result.monthly_searches_source,
+        status=status,
+        message=message,
+    )

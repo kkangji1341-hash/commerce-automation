@@ -40,3 +40,17 @@ class KeywordAnalysisResponse(BaseModel):
 class KeywordAnalysisHistoryResponse(BaseModel):
     items: List[KeywordAnalysisResponse]
     total: int
+
+
+class KeywordFetchAutoRequest(BaseModel):
+    keyword: str
+
+
+class KeywordFetchAutoResponse(BaseModel):
+    keyword: str
+    search_trend: List[int]
+    trend_source: str
+    monthly_searches: int | None
+    monthly_searches_source: str | None
+    status: str  # success | partial_success | failed
+    message: str
