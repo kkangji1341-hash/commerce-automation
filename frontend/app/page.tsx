@@ -2,16 +2,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import Loading from "@/components/Common/Loading";
 import ErrorMessage from "@/components/Common/Error";
 import Button from "@/components/Common/Button";
 import ProductModal from "@/components/Product/ProductModal";
-import ProfitChart from "@/components/Dashboard/ProfitChart";
 import { getKeywordHistory, getMyProducts } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUser } from "@/contexts/UserContext";
 import type { KeywordAnalysisResult, ProductGrade, RecommendedProduct } from "@/lib/types";
+
+// recharts는 번들이 커서 초기 로드에서 제외하고 실제로 필요할 때만 불러온다.
+const ProfitChart = dynamic(() => import("@/components/Dashboard/ProfitChart"), {
+  ssr: false,
+  loading: () => <div className="h-56 w-full animate-pulse rounded-lg bg-gray-100" />,
+});
 
 function currency(n: number) {
   return `₩${n.toLocaleString()}`;
@@ -132,7 +138,10 @@ export default function DashboardPage() {
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-700">사용자 분석 현황</h2>
-              <Link href="/keywords" className="text-xs font-medium text-primary-600 hover:underline">
+              <Link
+                href="/keywords"
+                className="flex min-h-[44px] items-center text-xs font-medium text-primary-600 hover:underline"
+              >
                 새 키워드 분석하기 →
               </Link>
             </div>
@@ -227,7 +236,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => setSelectedProduct(p)}
-                            className="text-xs font-medium text-primary-600 hover:underline"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-end text-xs font-medium text-primary-600 hover:underline"
                           >
                             상세보기 →
                           </button>

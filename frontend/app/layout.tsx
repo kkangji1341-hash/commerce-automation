@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -13,6 +13,12 @@ export const metadata: Metadata = {
   description: "Phase 1 MVP - 키워드 분석 & 상품 추천 대시보드",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
@@ -23,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Header />
             <div className="flex min-h-[calc(100vh-56px)]">
               <Sidebar />
-              <main className="flex-1 pb-16 md:pb-0">{children}</main>
+              <main className="min-w-0 flex-1 pb-16 md:pb-0">{children}</main>
             </div>
             <MobileNav />
             <Footer />

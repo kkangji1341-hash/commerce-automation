@@ -1,5 +1,11 @@
+import dynamic from "next/dynamic";
 import type { KeywordAnalysisResult } from "@/lib/types";
-import TrendChart from "./TrendChart";
+
+// recharts는 번들이 커서 초기 로드에서 제외하고 실제로 필요할 때만 불러온다.
+const TrendChart = dynamic(() => import("./TrendChart"), {
+  ssr: false,
+  loading: () => <div className="h-48 w-full animate-pulse rounded-lg bg-gray-100" />,
+});
 
 const COMPETITION_STYLE: Record<string, string> = {
   LOW: "bg-green-100 text-green-700",

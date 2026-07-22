@@ -135,23 +135,29 @@ export default function KeywordForm({
         <button
           type="button"
           onClick={fillSample}
-          className="text-xs font-medium text-primary-600 hover:underline"
+          className="flex min-h-[44px] items-center text-xs font-medium text-primary-600 hover:underline"
         >
           샘플 데이터 채우기
         </button>
       </div>
 
-      <div className="flex gap-4 rounded-lg bg-gray-50 p-3 text-sm">
-        <label className="flex items-center gap-1.5">
+      <div className="flex flex-col gap-2 rounded-lg bg-gray-50 p-3 text-sm sm:flex-row sm:gap-4">
+        <label className="flex min-h-[44px] items-center gap-2">
           <input
             type="radio"
+            className="h-5 w-5"
             checked={mode === "manual"}
             onChange={() => setMode("manual")}
           />
           수동 입력
         </label>
-        <label className="flex items-center gap-1.5">
-          <input type="radio" checked={mode === "auto"} onChange={() => setMode("auto")} />
+        <label className="flex min-h-[44px] items-center gap-2">
+          <input
+            type="radio"
+            className="h-5 w-5"
+            checked={mode === "auto"}
+            onChange={() => setMode("auto")}
+          />
           자동 수집 (네이버 데이터랩 · 쇼핑검색)
         </label>
       </div>
@@ -165,7 +171,7 @@ export default function KeywordForm({
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="예: 무선 이어폰"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
             {mode === "auto" && (
               <Button
@@ -195,7 +201,7 @@ export default function KeywordForm({
             min={0}
             value={monthlySearches || ""}
             onChange={(e) => setMonthlySearches(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
         </div>
 
@@ -210,7 +216,7 @@ export default function KeywordForm({
             min={0}
             value={numTopSellers || ""}
             onChange={(e) => setNumTopSellers(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
           {mode === "auto" && autoStatus?.sellersCollected && (
             <p className="mt-1 text-[10px] text-gray-400">
@@ -230,7 +236,7 @@ export default function KeywordForm({
             min={0}
             value={avgListingPrice || ""}
             onChange={(e) => setAvgListingPrice(Number(e.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
         </div>
       </div>
@@ -249,7 +255,7 @@ export default function KeywordForm({
               max={100}
               value={v}
               onChange={(e) => updateTrend(i, Number(e.target.value))}
-              className="w-full rounded-md border border-gray-300 px-1.5 py-1.5 text-center text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="min-h-[36px] w-full rounded-md border border-gray-300 px-1.5 py-2 text-center text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               title={`${i + 1}개월 전`}
             />
           ))}
@@ -273,7 +279,7 @@ export default function KeywordForm({
               min={0}
               value={v}
               onChange={(e) => updateReview(i, Number(e.target.value))}
-              className="w-full rounded-md border border-gray-300 px-1.5 py-1.5 text-center text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="min-h-[36px] w-full rounded-md border border-gray-300 px-1.5 py-2 text-center text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               title={`${i + 1}위 상품`}
             />
           ))}

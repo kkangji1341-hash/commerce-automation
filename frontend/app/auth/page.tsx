@@ -35,7 +35,7 @@ export default function AuthPage() {
               계정이 없으신가요?{" "}
               <button
                 onClick={() => setMode("signup")}
-                className="font-medium text-primary-600 hover:underline"
+                className="inline-block min-h-[44px] py-2 font-medium text-primary-600 hover:underline"
               >
                 회원가입
               </button>
@@ -45,7 +45,7 @@ export default function AuthPage() {
               이미 계정이 있으신가요?{" "}
               <button
                 onClick={() => setMode("login")}
-                className="font-medium text-primary-600 hover:underline"
+                className="inline-block min-h-[44px] py-2 font-medium text-primary-600 hover:underline"
               >
                 로그인
               </button>

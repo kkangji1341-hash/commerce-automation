@@ -31,7 +31,7 @@ export default function Header() {
               </span>
               <button
                 onClick={handleLogout}
-                className="rounded-md px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-100"
+                className="flex min-h-[44px] items-center rounded-md px-3 font-medium text-gray-700 hover:bg-gray-100"
               >
                 로그아웃
               </button>
@@ -39,7 +39,7 @@ export default function Header() {
           ) : (
             <Link
               href="/auth"
-              className="rounded-md bg-primary-600 px-3 py-1.5 font-medium text-white hover:bg-primary-700"
+              className="flex min-h-[44px] items-center rounded-md bg-primary-600 px-3 font-medium text-white hover:bg-primary-700"
             >
               로그인
             </Link>
