@@ -35,6 +35,13 @@ class RecommendedProduct(Base):
     risk_level: Mapped[str] = mapped_column(String(20), default="MEDIUM")
     recommendation_reasons: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Phase 4: 시장 리스크 세분화 + 등급 시스템
+    seller_competition_level: Mapped[str] = mapped_column(String(20), default="MEDIUM")
+    market_saturation_level: Mapped[str] = mapped_column(String(20), default="MEDIUM")
+    grade: Mapped[str] = mapped_column(String(10), default="BRONZE")
+    grade_reason: Mapped[str] = mapped_column(String(255), default="")
+    payback_period_months: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     # SourceProduct 요약 (source_product 필드를 평탄화해서 저장)
     source_id: Mapped[str] = mapped_column(String(100))
     source_platform: Mapped[str] = mapped_column(String(50))

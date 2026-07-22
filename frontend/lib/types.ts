@@ -72,6 +72,8 @@ export interface ProductRecommendInput extends KeywordAnalysisInput {
   limit?: number;
 }
 
+export type ProductGrade = "GOLD" | "SILVER" | "BRONZE";
+
 export interface RecommendedProduct {
   id: number;
   product_name: string;
@@ -85,9 +87,14 @@ export interface RecommendedProduct {
   estimated_monthly_sales: number;
   estimated_monthly_revenue: number;
   estimated_monthly_profit: number;
+  payback_period_months: number | null;
   roi_percent: number;
   risk_level: RiskLevel;
   risk_factors: string[];
+  seller_competition_level: RiskLevel;
+  market_saturation_level: RiskLevel;
+  grade: ProductGrade;
+  grade_reason: string;
   recommendation_reasons: string[];
   source_id: string;
   source_platform: string;

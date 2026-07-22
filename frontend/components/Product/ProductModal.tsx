@@ -3,8 +3,16 @@
 import { useEffect } from "react";
 import type { RecommendedProduct } from "@/lib/types";
 
+const GRADE_BADGE: Record<string, string> = { GOLD: "🥇", SILVER: "🥈", BRONZE: "🥉" };
+
 function currency(n: number) {
   return `₩${n.toLocaleString()}`;
+}
+
+function paybackLabel(months: number | null) {
+  if (months === null) return "회수 불가";
+  if (months < 1) return "1개월 이내";
+  return `${months.toFixed(1)}개월`;
 }
 
 export default function ProductModal({
@@ -32,7 +40,13 @@ export default function ProductModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between">
-          <h2 className="text-lg font-bold text-gray-900">{product.product_name}</h2>
+          <div>
+            <span className="mb-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              {GRADE_BADGE[product.grade] ?? ""} {product.grade}
+            </span>
+            <h2 className="text-lg font-bold text-gray-900">{product.product_name}</h2>
+            <p className="text-xs text-gray-500">{product.grade_reason}</p>
+          </div>
           <button
             onClick={onClose}
             className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -94,8 +108,19 @@ export default function ProductModal({
             {product.roi_percent.toFixed(0)}%
           </dd>
 
+          <dt className="text-gray-500">원금 회수 기간</dt>
+          <dd className="text-right font-medium text-gray-900">
+            {paybackLabel(product.payback_period_months)}
+          </dd>
+
           <dt className="text-gray-500">위험도</dt>
           <dd className="text-right font-medium text-gray-900">{product.risk_level}</dd>
+
+          <dt className="text-gray-500">판매자 경쟁도</dt>
+          <dd className="text-right font-medium text-gray-900">{product.seller_competition_level}</dd>
+
+          <dt className="text-gray-500">시장 포화도</dt>
+          <dd className="text-right font-medium text-gray-900">{product.market_saturation_level}</dd>
         </dl>
 
         {product.risk_factors.length > 0 && (

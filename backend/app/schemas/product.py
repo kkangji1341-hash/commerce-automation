@@ -28,9 +28,14 @@ class RecommendedProductResponse(BaseModel):
     estimated_monthly_sales: int
     estimated_monthly_revenue: int
     estimated_monthly_profit: int
+    payback_period_months: float | None = None
     roi_percent: float
     risk_level: str
     risk_factors: List[str]
+    seller_competition_level: str
+    market_saturation_level: str
+    grade: str
+    grade_reason: str
     recommendation_reasons: List[str]
     source_id: str
     source_platform: str

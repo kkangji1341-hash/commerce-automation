@@ -29,6 +29,7 @@ async def recommend_and_save(
 
     recommendations = product_engine.recommend_products(
         keyword_analysis=analysis,
+        keyword_data=keyword_data,
         budget=request.budget,
         limit=request.limit,
     )
@@ -49,8 +50,13 @@ async def recommend_and_save(
             estimated_monthly_sales=rec.estimated_monthly_sales,
             estimated_monthly_revenue=rec.estimated_monthly_revenue,
             estimated_monthly_profit=rec.estimated_monthly_profit,
+            payback_period_months=rec.payback_period_months,
             risk_factors=rec.risk_factors,
             risk_level=rec.risk_level,
+            seller_competition_level=rec.seller_competition_level,
+            market_saturation_level=rec.market_saturation_level,
+            grade=rec.grade,
+            grade_reason=rec.grade_reason,
             recommendation_reasons=rec.recommendation_reasons,
             source_id=rec.source_product.source_id,
             source_platform=rec.source_product.source_platform.value,
