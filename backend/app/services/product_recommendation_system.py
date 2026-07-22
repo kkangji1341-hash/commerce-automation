@@ -8,7 +8,7 @@ Phase 4: 위험도 분석 강화 + 리뷰 기반 판매량 추정 + GOLD/SILVER/
 from dataclasses import dataclass, field
 from typing import List, Optional
 from enum import Enum
-from app.services.keyword_analysis_engine import KeywordAnalysis, KeywordData, CompetitionLevel
+from app.services.keyword_analysis_engine import KeywordAnalysis, KeywordData
 
 
 class SourcePlatform(str, Enum):
@@ -634,78 +634,3 @@ class ProductRecommendationEngine:
                 stock_quantity=500
             ),
         ]
-
-
-# ==================== 테스트 ====================
-
-def test_product_recommendation():
-    """상품 추천 시스템 테스트"""
-
-    from app.services.keyword_analysis_engine import KeywordAnalysisEngine, KeywordData
-
-    # 키워드 분석 먼저
-    engine = KeywordAnalysisEngine()
-    keyword_data = KeywordData(
-        keyword="무선 이어폰",
-        monthly_searches=18500,
-        cpc_cost=1200,
-        num_top_sellers=25,
-        avg_listing_price=59900,
-        search_trend=[40, 45, 50, 55, 65, 70, 75, 80, 85, 88, 90, 92],
-        review_count_top_10=[500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400],
-    )
-
-    keyword_analysis = engine.analyze(keyword_data)
-
-    print("=" * 80)
-    print("🎯 상품 추천 시스템 테스트 (Phase 4: 등급/위험도 강화)")
-    print("=" * 80)
-    print(f"\n📊 키워드: {keyword_analysis.keyword}")
-    print(f"   기회점수: {keyword_analysis.opportunity_score}점")
-    print(f"   예상 월판매: {keyword_analysis.estimated_monthly_sales}개")
-
-    # 상품 추천
-    recommender = ProductRecommendationEngine()
-    recommendations = recommender.recommend_products(
-        keyword_analysis=keyword_analysis,
-        keyword_data=keyword_data,
-        budget=5000000,
-        limit=5
-    )
-
-    print(f"\n💡 추천 상품 ({len(recommendations)}개):")
-    print("-" * 80)
-
-    grade_emoji = {"GOLD": "🥇", "SILVER": "🥈", "BRONZE": "🥉"}
-
-    for i, rec in enumerate(recommendations, 1):
-        print(f"\n#{i} {grade_emoji.get(rec.grade, '')} [{rec.grade}] {rec.product_name}")
-        print(f"    등급 이유:         {rec.grade_reason}")
-        print(f"    점수:              {rec.product_score:.1f}/100")
-        print(f"    매칭도:            {rec.match_score:.0f}%")
-        print(f"    원가:              ₩{rec.cost_of_goods:,}")
-        print(f"    추천 판매가:       ₩{rec.recommended_selling_price:,}")
-        print(f"    단가 이익:         ₩{rec.profit_per_unit:,} ({rec.profit_margin_percent:.0f}%)")
-        print(f"    예상 월판매:       {rec.estimated_monthly_sales}개")
-        print(f"    예상 월매출:       ₩{rec.estimated_monthly_revenue:,}")
-        print(f"    예상 월이익:       ₩{rec.estimated_monthly_profit:,}")
-        print(f"    ROI:               {rec.roi_percent():.0f}%")
-        payback_str = f"{rec.payback_period_months}개월" if rec.payback_period_months is not None else "-"
-        print(f"    원금 회수 기간:    {payback_str}")
-        print(f"    위험도:            {rec.risk_level}")
-        print(f"    판매자 경쟁도:     {rec.seller_competition_level}")
-        print(f"    시장 포화도:       {rec.market_saturation_level}")
-
-        if rec.recommendation_reasons:
-            print(f"    이유:")
-            for reason in rec.recommendation_reasons:
-                print(f"      {reason}")
-
-        if rec.risk_factors:
-            print(f"    주의사항:")
-            for factor in rec.risk_factors:
-                print(f"      ⚠ {factor}")
-
-
-if __name__ == "__main__":
-    test_product_recommendation()

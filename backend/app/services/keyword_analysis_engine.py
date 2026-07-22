@@ -4,8 +4,7 @@
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Optional
-from datetime import datetime, timedelta
+from typing import List
 import math
 from enum import Enum
 
@@ -418,78 +417,3 @@ class KeywordAnalysisEngine:
             reasons.append(f"💸 낮은 수익성: 월 ₩{estimated_revenue:,.0f} 예상")
         
         return recommendation, reasons
-
-
-# ==================== 테스트 예시 ====================
-
-def test_keyword_analysis():
-    """키워드 분석 엔진 테스트"""
-    
-    engine = KeywordAnalysisEngine()
-    
-    # 예시 1: 뜨는 상품 (높은 트렌드, 낮은 경쟁)
-    hot_product = KeywordData(
-        keyword="무선 이어폰",
-        monthly_searches=18500,
-        cpc_cost=1200,
-        num_top_sellers=25,  # 중간 정도
-        avg_listing_price=59900,
-        search_trend=[40, 45, 50, 55, 65, 70, 75, 80, 85, 88, 90, 92],
-        review_count_top_10=[500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400],
-    )
-    
-    # 예시 2: 경쟁이 심한 상품 (많은 판매자)
-    competitive_product = KeywordData(
-        keyword="스마트폰 케이스",
-        monthly_searches=45000,
-        cpc_cost=2500,
-        num_top_sellers=200,  # 경쟁 매우 심함
-        avg_listing_price=9900,
-        search_trend=[80, 82, 84, 85, 86, 87, 88, 88, 89, 89, 90, 90],
-        review_count_top_10=[5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000],
-    )
-    
-    # 예시 3: 내리막 상품 (낮아지는 트렌드)
-    declining_product = KeywordData(
-        keyword="DVD 플레이어",
-        monthly_searches=2100,
-        cpc_cost=300,
-        num_top_sellers=15,
-        avg_listing_price=35000,
-        search_trend=[95, 90, 85, 80, 70, 60, 50, 45, 40, 35, 30, 25],
-        review_count_top_10=[100, 150, 200, 250, 300, 350, 400, 450, 500, 550],
-    )
-    
-    print("=" * 80)
-    print("🔍 키워드 분석 엔진 테스트")
-    print("=" * 80)
-    
-    for product in [hot_product, competitive_product, declining_product]:
-        result = engine.analyze(product)
-        print_analysis(result)
-        print()
-
-
-def print_analysis(analysis: KeywordAnalysis):
-    """분석 결과 출력"""
-    print(f"\n📊 키워드: {analysis.keyword}")
-    print(f"   월간 검색량: {analysis.monthly_searches:,}명")
-    print(f"\n✨ 분석 결과:")
-    print(f"   트렌드 점수:     {analysis.trend_score:>6.1f}/100  {'📈' if analysis.trend_score >= 60 else '📉'}")
-    print(f"   경쟁도 점수:     {analysis.competition_score:>6.1f}/100  [{analysis.competition_level.value}]")
-    print(f"   기회점수:       {analysis.opportunity_score:>6.1f}/100  ⭐⭐⭐")
-    print(f"   위험도:         {analysis.risk_level}")
-    print(f"   계절성:         {analysis.seasonality}")
-    print(f"\n💰 수익성 분석:")
-    print(f"   평균 판매가:     ₩{analysis.avg_selling_price:,}")
-    print(f"   예상 월판매:     {analysis.estimated_monthly_sales}개")
-    print(f"   예상 월매출:     ₩{analysis.estimated_monthly_revenue:,}")
-    print(f"   ROI (원가 50% 기준): {(analysis.estimated_monthly_revenue / (analysis.avg_selling_price * analysis.estimated_monthly_sales * 0.5) * 100 - 100) if analysis.estimated_monthly_sales > 0 else 0:.0f}%")
-    print(f"\n🎯 추천도: {analysis.recommendation}")
-    print(f"   분석 이유:")
-    for reason in analysis.reasons:
-        print(f"   - {reason}")
-
-
-if __name__ == "__main__":
-    test_keyword_analysis()

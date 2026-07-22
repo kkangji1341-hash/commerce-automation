@@ -17,6 +17,7 @@ frontend/.env.local
 frontend/.env*.local
 npm-debug.log*
 next-env.d.ts
+frontend/tsconfig.tsbuildinfo
 
 # Editor / OS
 .vscode/

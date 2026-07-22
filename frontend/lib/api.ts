@@ -111,12 +111,6 @@ export async function login(input: LoginInput): Promise<TokenResponse> {
   return data;
 }
 
-export async function refreshToken(): Promise<TokenResponse | null> {
-  const token = await performRefresh();
-  if (!token) return null;
-  return { access_token: token, refresh_token: getRefreshToken()!, token_type: "bearer" };
-}
-
 export async function getMe(): Promise<UserResponse> {
   const { data } = await client.get<UserResponse>("/auth/me");
   return data;

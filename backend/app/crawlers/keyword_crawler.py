@@ -23,7 +23,6 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional
 
-import pandas as pd
 import requests
 from dotenv import load_dotenv
 from pytrends.request import TrendReq
