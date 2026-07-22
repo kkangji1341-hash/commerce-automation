@@ -120,6 +120,10 @@ export interface KeywordFetchAutoResponse {
   trend_source: string;
   monthly_searches: number | null;
   monthly_searches_source: string | null;
+  avg_price: number | null;
+  avg_price_source: string | null;
+  seller_count: number | null;
+  seller_count_source: string | null;
   status: "success" | "partial_success" | "failed";
   message: string;
 }

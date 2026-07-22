@@ -26,6 +26,14 @@ interface KeywordFormProps {
   submitLabel?: string;
 }
 
+interface AutoStatus {
+  trendCollected: boolean;
+  searchesCollected: boolean;
+  priceCollected: boolean;
+  sellersCollected: boolean;
+  message: string;
+}
+
 export default function KeywordForm({
   onSubmit,
   isLoading,
@@ -34,11 +42,7 @@ export default function KeywordForm({
 }: KeywordFormProps) {
   const [mode, setMode] = useState<"manual" | "auto">("manual");
   const [isFetchingAuto, setIsFetchingAuto] = useState(false);
-  const [autoStatus, setAutoStatus] = useState<{
-    trendCollected: boolean;
-    searchesCollected: boolean;
-    message: string;
-  } | null>(null);
+  const [autoStatus, setAutoStatus] = useState<AutoStatus | null>(null);
 
   const [keyword, setKeyword] = useState(initial?.keyword ?? "");
   const [monthlySearches, setMonthlySearches] = useState(initial?.monthly_searches ?? 0);
@@ -72,15 +76,18 @@ export default function KeywordForm({
         return;
       }
       setSearchTrend(res.search_trend);
-      if (res.monthly_searches !== null) {
-        setMonthlySearches(res.monthly_searches);
-      }
+      if (res.monthly_searches !== null) setMonthlySearches(res.monthly_searches);
+      if (res.avg_price !== null) setAvgListingPrice(res.avg_price);
+      if (res.seller_count !== null) setNumTopSellers(res.seller_count);
+
       setAutoStatus({
         trendCollected: true,
         searchesCollected: res.monthly_searches !== null,
+        priceCollected: res.avg_price !== null,
+        sellersCollected: res.seller_count !== null,
         message: res.message,
       });
-      toast.success("Google Trends 데이터를 가져왔습니다");
+      toast.success(`자동 수집 완료 (${res.trend_source === "naver_datalab" ? "네이버 데이터랩" : "Google Trends"})`);
     } catch (err) {
       toast.error(getErrorMessage(err, "자동 수집에 실패했습니다"));
     } finally {
@@ -108,7 +115,18 @@ export default function KeywordForm({
     });
   }
 
-  const needsManualSearches = mode === "auto" && !(autoStatus?.searchesCollected ?? false);
+  function fieldBadge(collected: boolean | undefined) {
+    if (mode !== "auto") return null;
+    return collected ? (
+      <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-normal text-green-700">
+        자동 수집됨
+      </span>
+    ) : (
+      <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
+        직접 입력 필요
+      </span>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -134,7 +152,7 @@ export default function KeywordForm({
         </label>
         <label className="flex items-center gap-1.5">
           <input type="radio" checked={mode === "auto"} onChange={() => setMode("auto")} />
-          자동 수집 (Google Trends)
+          자동 수집 (네이버 데이터랩 · 쇼핑검색)
         </label>
       </div>
 
@@ -162,22 +180,14 @@ export default function KeywordForm({
             )}
           </div>
           {mode === "auto" && autoStatus && (
-            <p className="mt-2 text-xs text-gray-500">
-              {autoStatus.trendCollected && "✓ 검색 트렌드(12개월) 자동 수집됨. "}
-              {!autoStatus.searchesCollected &&
-                "월간 검색량 등 나머지 값은 네이버 API 미연동으로 자동 수집이 안 됩니다 — 아래 값을 직접 입력해주세요."}
-            </p>
+            <p className="mt-2 text-xs text-gray-500">{autoStatus.message}</p>
           )}
         </div>
 
         <div>
           <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
             월간 검색량
-            {needsManualSearches && (
-              <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
-                직접 입력 필요
-              </span>
-            )}
+            {fieldBadge(autoStatus?.searchesCollected)}
           </label>
           <input
             type="number"
@@ -192,11 +202,7 @@ export default function KeywordForm({
         <div>
           <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
             상위 판매자 수
-            {mode === "auto" && (
-              <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
-                직접 입력 필요
-              </span>
-            )}
+            {fieldBadge(autoStatus?.sellersCollected)}
           </label>
           <input
             type="number"
@@ -206,16 +212,17 @@ export default function KeywordForm({
             onChange={(e) => setNumTopSellers(Number(e.target.value))}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
+          {mode === "auto" && autoStatus?.sellersCollected && (
+            <p className="mt-1 text-[10px] text-gray-400">
+              네이버 쇼핑 검색 상위 10개 중 고유 판매자 수 (근사치)
+            </p>
+          )}
         </div>
 
         <div>
           <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
             평균 판매가 (₩)
-            {mode === "auto" && (
-              <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
-                직접 입력 필요
-              </span>
-            )}
+            {fieldBadge(autoStatus?.priceCollected)}
           </label>
           <input
             type="number"
@@ -231,11 +238,7 @@ export default function KeywordForm({
       <div>
         <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
           지난 12개월 트렌드 <span className="text-gray-400">(0-100)</span>
-          {mode === "auto" && autoStatus?.trendCollected && (
-            <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-normal text-green-700">
-              자동 수집됨
-            </span>
-          )}
+          {fieldBadge(autoStatus?.trendCollected)}
         </label>
         <div className="grid grid-cols-6 gap-2 sm:grid-cols-12">
           {searchTrend.map((v, i) => (
@@ -258,7 +261,7 @@ export default function KeywordForm({
           상위 10개 상품 리뷰 수
           {mode === "auto" && (
             <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-normal text-yellow-700">
-              직접 입력 필요
+              직접 입력 필요 (네이버 공식 API 미제공)
             </span>
           )}
         </label>

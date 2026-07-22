@@ -77,12 +77,23 @@ async def fetch_auto(keyword: str) -> KeywordFetchAutoResponse:
             message=f"자동 수집에 실패했습니다: {exc}",
         )
 
-    if result.monthly_searches is not None:
-        status = "success"
-        message = "모든 데이터가 자동으로 수집되었습니다."
-    else:
-        status = "partial_success"
-        message = "Google Trends 데이터만 수집됨. 월간 검색량은 네이버 API 연동 필요 (직접 입력해주세요)."
+    collected = [
+        "검색 트렌드",
+        "평균 판매가" if result.avg_price is not None else None,
+        "판매자 수" if result.seller_count is not None else None,
+        "월간 검색량" if result.monthly_searches is not None else None,
+    ]
+    missing = [
+        "월간 검색량" if result.monthly_searches is None else None,
+        "평균 판매가" if result.avg_price is None else None,
+        "판매자 수" if result.seller_count is None else None,
+        "리뷰 수 (공식 API 미제공, 항상 직접 입력)",
+    ]
+    collected = [c for c in collected if c]
+    missing = [m for m in missing if m]
+
+    status = "success" if not [m for m in missing if m != "리뷰 수 (공식 API 미제공, 항상 직접 입력)"] else "partial_success"
+    message = f"자동 수집됨: {', '.join(collected)}. 직접 입력 필요: {', '.join(missing)}"
 
     return KeywordFetchAutoResponse(
         keyword=result.keyword,
@@ -90,6 +101,10 @@ async def fetch_auto(keyword: str) -> KeywordFetchAutoResponse:
         trend_source=result.trend_source,
         monthly_searches=result.monthly_searches,
         monthly_searches_source=result.monthly_searches_source,
+        avg_price=result.avg_price,
+        avg_price_source=result.avg_price_source,
+        seller_count=result.seller_count,
+        seller_count_source=result.seller_count_source,
         status=status,
         message=message,
     )

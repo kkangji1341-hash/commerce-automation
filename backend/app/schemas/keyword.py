@@ -52,5 +52,9 @@ class KeywordFetchAutoResponse(BaseModel):
     trend_source: str
     monthly_searches: int | None
     monthly_searches_source: str | None
+    avg_price: int | None = None
+    avg_price_source: str | None = None
+    seller_count: int | None = None
+    seller_count_source: str | None = None
     status: str  # success | partial_success | failed
     message: str
