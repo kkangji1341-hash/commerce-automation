@@ -19,6 +19,17 @@ const SAMPLE_DATA: KeywordAnalysisInput = {
 const EMPTY_TREND = Array(12).fill(0);
 const EMPTY_REVIEWS = Array(10).fill(0);
 
+// 백엔드(app/schemas/keyword.py)의 키워드 검증과 동일한 규칙: 공백만 있거나
+// 문자/숫자(한글 포함)가 하나도 없는 키워드는 거부한다.
+const HAS_ALNUM_RE = /[0-9A-Za-z가-힣]/;
+
+function validateKeyword(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return "키워드를 입력해주세요";
+  if (!HAS_ALNUM_RE.test(trimmed)) return "키워드에 문자 또는 숫자를 포함해주세요";
+  return null;
+}
+
 interface KeywordFormProps {
   onSubmit: (input: KeywordAnalysisInput) => void | Promise<void>;
   isLoading?: boolean;
@@ -63,8 +74,9 @@ export default function KeywordForm({
   }
 
   async function handleAutoFetch() {
-    if (!keyword.trim()) {
-      toast.error("키워드를 먼저 입력해주세요");
+    const keywordError = validateKeyword(keyword);
+    if (keywordError) {
+      toast.error(keywordError);
       return;
     }
     setIsFetchingAuto(true);
@@ -105,8 +117,13 @@ export default function KeywordForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    const keywordError = validateKeyword(keyword);
+    if (keywordError) {
+      toast.error(keywordError);
+      return;
+    }
     await onSubmit({
-      keyword,
+      keyword: keyword.trim(),
       monthly_searches: monthlySearches,
       num_top_sellers: numTopSellers,
       avg_listing_price: avgListingPrice,

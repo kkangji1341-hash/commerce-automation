@@ -1,13 +1,27 @@
 """키워드 분석 요청/응답 스키마"""
 
+import re
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# 공백만 있거나 특수문자만 있는 키워드를 막기 위해, 문자/숫자(한글 포함)가
+# 최소 하나는 있어야 한다.
+_HAS_ALNUM_RE = re.compile(r"[0-9A-Za-z가-힣]")
+
+
+def _validate_keyword(v: str) -> str:
+    v = v.strip()
+    if not v:
+        raise ValueError("키워드를 입력해주세요")
+    if not _HAS_ALNUM_RE.search(v):
+        raise ValueError("키워드에 문자 또는 숫자를 포함해주세요")
+    return v
 
 
 class KeywordAnalysisRequest(BaseModel):
-    keyword: str
+    keyword: str = Field(..., min_length=1)
     monthly_searches: int
     cpc_cost: int = 0
     num_top_sellers: int
@@ -15,6 +29,11 @@ class KeywordAnalysisRequest(BaseModel):
     search_trend: List[int] = Field(..., description="지난 12개월 트렌드 (0-100)")
     review_count_top_10: List[int]
     platform: str = "naver"
+
+    @field_validator("keyword")
+    @classmethod
+    def keyword_must_be_meaningful(cls, v: str) -> str:
+        return _validate_keyword(v)
 
 
 class KeywordAnalysisResponse(BaseModel):
@@ -43,7 +62,12 @@ class KeywordAnalysisHistoryResponse(BaseModel):
 
 
 class KeywordFetchAutoRequest(BaseModel):
-    keyword: str
+    keyword: str = Field(..., min_length=1)
+
+    @field_validator("keyword")
+    @classmethod
+    def keyword_must_be_meaningful(cls, v: str) -> str:
+        return _validate_keyword(v)
 
 
 class KeywordFetchAutoResponse(BaseModel):

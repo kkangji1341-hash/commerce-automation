@@ -180,16 +180,16 @@ class KeywordAnalysisEngine:
         2. 평균 리뷰 수 (많을수록 이미 잘 팔림 = 경쟁 심함)
         """
         
-        # 요소 1: 판매자 수 기반 경쟁도 (0-50점)
-        # 0-10명: 경쟁 적음, 50명 이상: 경쟁 많음
-        sellers_score = min(50, (num_top_sellers / 50) * 50)
-        
-        # 요소 2: 리뷰 수 기반 경쟁도 (0-50점)
+        # 요소 1: 판매자 수 기반 경쟁도 (0-100점)
+        # 0-10명: 경쟁 적음, 50명 이상: 경쟁 많음(만점)
+        sellers_score = min(100, (num_top_sellers / 50) * 100)
+
+        # 요소 2: 리뷰 수 기반 경쟁도 (0-100점)
         # 리뷰가 많다 = 이미 잘 팔림 = 경쟁 심함
         avg_reviews = sum(review_count_top_10) / len(review_count_top_10) if review_count_top_10 else 0
-        
-        # 리뷰 1000개마다 10점 증가 (최대 50점)
-        reviews_score = min(50, (avg_reviews / 1000) * 50)
+
+        # 평균 리뷰 1000개 이상이면 만점
+        reviews_score = min(100, (avg_reviews / 1000) * 100)
         
         # 종합 경쟁도
         competition_score = sellers_score * 0.6 + reviews_score * 0.4
