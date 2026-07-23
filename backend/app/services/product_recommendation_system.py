@@ -18,6 +18,7 @@ class SourcePlatform(str, Enum):
     DHGATE = "dhgate"
     DROPSHIPPING = "dropshipping"
     DOMESTIC = "domestic"
+    NAVER_MARKET = "naver_market"  # 네이버 쇼핑 실매물 판매가 기반 추정 (소싱 원가 아님)
 
 
 @dataclass
@@ -36,6 +37,9 @@ class SourceProduct:
     # 키워드 매칭용 카테고리 태그(한/영 혼용). product_name이 영문이라 한글 키워드와
     # 문자열 매칭이 안 되는 문제를 피하기 위해 별도로 둔다.
     category_keywords: List[str] = field(default_factory=list)
+    # True면 cost_price 이하 소싱 필드가 실제 공급처 데이터가 아니라 네이버 판매가
+    # 기반 추정치라는 뜻. UI에서 반드시 이 사실을 사용자에게 노출해야 한다.
+    is_estimated: bool = False
 
 
 @dataclass
@@ -146,6 +150,91 @@ def assign_grade(roi_percent: float, risk_level: str) -> tuple:
     return "BRONZE", f"ROI {roi_percent:.0f}%, {risk_level} 위험도 — 신중 검토 권장"
 
 
+# ==================== 네이버 판매가 기반 동적 후보 생성 ====================
+#
+# 네이버 쇼핑검색 API는 "이미 팔리고 있는 소매가"만 준다. 원가/배송비/MOQ/
+# 리드타임/품질점수/공급처평점처럼 실제 소싱(사입) 정보는 전혀 주지 않는다.
+# 그래서 이 섹션에서 만드는 SourceProduct는 전부 is_estimated=True로 표시되고,
+# 프런트엔드는 이 값을 보고 "원가 추정치" 배지를 반드시 노출해야 한다.
+
+# 카테고리별 원가율(=원가/네이버 판매가) 추정 기본값. 실측 데이터가 아니라
+# 카테고리 성격상 통상적인 마진 폭을 대략적으로 반영한 설정값이며, 필요에
+# 따라 조정 가능하도록 모듈 상수로 분리해뒀다.
+CATEGORY_COST_RATIOS: dict[str, float] = {
+    "디지털/가전": 0.45,
+    "생활/건강": 0.30,
+    "패션의류": 0.25,
+    "패션잡화": 0.25,
+    "가구/인테리어": 0.35,
+    "출산/육아": 0.35,
+    "식품": 0.55,
+    "스포츠/레저": 0.35,
+    "화장품/미용": 0.20,
+    "여가/생활편의": 0.35,
+}
+DEFAULT_COST_RATIO = 0.35  # 카테고리 매핑에 없으면 이 기본값(35%) 사용
+
+
+def estimate_cost_price(retail_price: int, category: str = "") -> int:
+    """
+    네이버 판매가(소매가)로부터 원가를 '추정'한다. 실제 소싱 원가가 아니다.
+
+    category는 네이버 응답의 category1~4 중 하나(보통 대분류에 가까운 category1)를
+    그대로 넘겨받는다고 가정하고, CATEGORY_COST_RATIOS에 없으면 기본 35%를 쓴다.
+    """
+    ratio = CATEGORY_COST_RATIOS.get(category, DEFAULT_COST_RATIO)
+    return max(1, round(retail_price * ratio))
+
+
+# 실제 소싱 정보가 없을 때 쓰는 중립적인(어느 쪽으로도 치우치지 않은) 추정 기본값.
+_ESTIMATED_SHIPPING_COST = 0
+_ESTIMATED_LEAD_TIME_DAYS = 7
+_ESTIMATED_QUALITY_SCORE = 70.0
+_ESTIMATED_SUPPLIER_RATING = 4.0
+_ESTIMATED_STOCK_QUANTITY = 9999
+
+
+def estimate_min_order_quantity(cost_price: int) -> int:
+    """
+    원가 구간별 최소 주문 수량 추정. ROI/원금회수기간 계산이
+    (원가 × MOQ)를 '초기 투자금'으로 쓰기 때문에, MOQ를 너무 작게 잡으면
+    (예: 1개) 월 판매량 대비 투자금이 비현실적으로 작아져서 ROI가 수만 %로
+    부풀려진다 — 저가 상품일수록 대량으로, 고가 상품일수록 소량으로 첫 주문하는
+    일반적인 소싱 관행을 반영해 그 왜곡을 줄인다.
+    """
+    if cost_price < 5_000:
+        return 100
+    if cost_price < 20_000:
+        return 50
+    if cost_price < 100_000:
+        return 20
+    return 5
+
+
+def naver_product_to_source_product(item: dict, keyword: str) -> SourceProduct:
+    """
+    fetch_naver_shopping_products()가 반환한 dict 1건을 SourceProduct로 변환한다.
+    이 keyword로 검색해서 나온 상품이므로 category_keywords=[keyword]로 설정해
+    _calculate_match_score()가 자연히 높은 매칭도를 주도록 한다.
+    """
+    cost_price = estimate_cost_price(item["price"], item.get("category", ""))
+    min_order_quantity = estimate_min_order_quantity(cost_price)
+    return SourceProduct(
+        source_id=f"naver_{item['product_id']}",
+        source_platform=SourcePlatform.NAVER_MARKET,
+        product_name=item["title"][:120],
+        cost_price=cost_price,
+        shipping_cost=_ESTIMATED_SHIPPING_COST,
+        min_order_quantity=min_order_quantity,
+        lead_time_days=_ESTIMATED_LEAD_TIME_DAYS,
+        quality_score=_ESTIMATED_QUALITY_SCORE,
+        supplier_rating=_ESTIMATED_SUPPLIER_RATING,
+        stock_quantity=_ESTIMATED_STOCK_QUANTITY,
+        category_keywords=[keyword],
+        is_estimated=True,
+    )
+
+
 class ProductRecommendationEngine:
     """상품 추천 엔진"""
 
@@ -158,7 +247,8 @@ class ProductRecommendationEngine:
         keyword_analysis: KeywordAnalysis,
         keyword_data: Optional[KeywordData] = None,
         budget: int = 5000000,
-        limit: int = 5
+        limit: int = 5,
+        dynamic_products: Optional[List[SourceProduct]] = None,
     ) -> List[RecommendedProduct]:
         """
         키워드 분석 결과를 바탕으로 상품 추천
@@ -168,15 +258,18 @@ class ProductRecommendationEngine:
             keyword_data: 키워드 원본 입력값 (상위 판매자 수, 리뷰 수 등 — Phase 4 위험도/판매량 추정에 사용)
             budget: 초기 투자 예산
             limit: 추천 상품 개수
+            dynamic_products: 네이버 판매가 기반으로 그때그때 만들어진 추정 후보(선택).
+                정적 카탈로그(self.source_products)와 합쳐서 함께 채점한다.
 
         Returns:
             추천 상품 리스트 (점수 순)
         """
 
         recommendations = []
+        candidates = self.source_products + (dynamic_products or [])
 
         # 각 소싱처 상품에 대해 점수 계산
-        for source_product in self.source_products:
+        for source_product in candidates:
             # 필터: 예산 내에서 구매 가능한가?
             if not self._is_affordable(source_product, budget):
                 continue

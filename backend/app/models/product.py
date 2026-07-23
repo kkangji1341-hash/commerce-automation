@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -49,6 +49,8 @@ class RecommendedProduct(Base):
     shipping_cost: Mapped[int] = mapped_column(Integer)
     min_order_quantity: Mapped[int] = mapped_column(Integer)
     lead_time_days: Mapped[int] = mapped_column(Integer)
+    # True면 cost_price 등 소싱 필드가 네이버 판매가 기반 추정치임 (실제 소싱처 데이터 아님)
+    is_estimated: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # roi_percent()는 dataclass에서 메서드로 계산되는 값이라 저장 시점 스냅샷으로 보관
     roi_percent: Mapped[float] = mapped_column(Float, default=0.0)

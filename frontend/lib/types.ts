@@ -102,6 +102,7 @@ export interface RecommendedProduct {
   shipping_cost: number;
   min_order_quantity: number;
   lead_time_days: number;
+  is_estimated: boolean;
   created_at: string;
 }
 

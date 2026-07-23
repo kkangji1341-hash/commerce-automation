@@ -43,6 +43,7 @@ class RecommendedProductResponse(BaseModel):
     shipping_cost: int
     min_order_quantity: int
     lead_time_days: int
+    is_estimated: bool = False
     created_at: datetime | None = None
 
 

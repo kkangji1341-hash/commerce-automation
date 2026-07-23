@@ -56,11 +56,18 @@ export default function ProductModal({
           </button>
         </div>
 
+        {product.is_estimated && (
+          <p className="mb-4 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+            ⚠ 이 상품은 정식 소싱처 데이터가 아니라 네이버 판매가를 바탕으로 원가 등을 추정한
+            결과입니다. 실제 사입을 진행하기 전에 반드시 소싱처를 직접 확인하세요.
+          </p>
+        )}
+
         <dl className="grid grid-cols-2 gap-y-3 text-sm">
           <dt className="text-gray-500">소싱처</dt>
           <dd className="text-right font-medium text-gray-900">{product.source_platform}</dd>
 
-          <dt className="text-gray-500">원가</dt>
+          <dt className="text-gray-500">원가{product.is_estimated && " (추정)"}</dt>
           <dd className="text-right font-medium text-gray-900">
             {currency(product.cost_price)}
           </dd>

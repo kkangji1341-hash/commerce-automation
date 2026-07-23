@@ -19,6 +19,7 @@ import hashlib
 import hmac
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import List, Optional
@@ -158,6 +159,94 @@ def fetch_naver_shopping_snapshot(keyword: str, top_n: int = 10) -> dict:
     seller_count = len({i.get("mallName") for i in items if i.get("mallName")}) or None
 
     return {"avg_price": avg_price, "seller_count": seller_count, "sample_size": len(items)}
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_MIN_REASONABLE_PRICE = 100
+_MAX_REASONABLE_PRICE = 10_000_000
+
+
+def fetch_naver_shopping_products(keyword: str, limit: int = 10) -> List[dict]:
+    """
+    네이버 검색 API(쇼핑)로 키워드에 실제로 잡히는 판매 중 상품 목록을 가져온다
+    (상품 추천 엔진이 카탈로그에 없는 카테고리의 후보를 동적으로 채울 때 사용).
+
+    주의: 이 API는 "이미 팔리고 있는 소매가"만 준다 — 원가/배송비/MOQ/리드타임/
+    리뷰수 같은 소싱 정보는 전혀 없다. 그 필드들은 호출부(product_recommendation_system)에서
+    추정치로 채우고 반드시 "추정" 표시를 해야 한다. 실패 시 예외를 던지지 않고
+    빈 리스트를 반환한다 — 이 데이터가 없어도 정적 카탈로그 기반 추천은 계속 동작해야 하므로.
+    """
+    client_id = os.getenv("NAVER_SEARCH_CLIENT_ID")
+    client_secret = os.getenv("NAVER_SEARCH_CLIENT_SECRET")
+    if not (client_id and client_secret):
+        logger.warning("NAVER_SEARCH_CLIENT_ID/SECRET 미설정 — 동적 상품 조회 건너뜀")
+        return []
+
+    headers = {"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret}
+    try:
+        response = requests.get(
+            f"{NAVER_OPENAPI_BASE_URL}/v1/search/shop.json",
+            headers=headers,
+            params={"query": keyword, "display": min(limit * 2, 30), "sort": "sim"},
+            timeout=5,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except requests.exceptions.Timeout:
+        logger.warning("네이버 쇼핑 검색 타임아웃(5s): keyword=%r", keyword)
+        return []
+    except requests.exceptions.RequestException as exc:
+        logger.warning("네이버 쇼핑 검색 실패(HTTP/네트워크): keyword=%r, %s", keyword, exc)
+        return []
+    except ValueError as exc:  # JSON 파싱 실패
+        logger.warning("네이버 쇼핑 검색 응답 파싱 실패: keyword=%r, %s", keyword, exc)
+        return []
+
+    raw_items = payload.get("items", [])
+    products: List[dict] = []
+    seen_ids: set = set()
+
+    for item in raw_items:
+        normalized = _validate_and_normalize_naver_product(item)
+        if normalized is None:
+            continue
+        if normalized["product_id"] in seen_ids:
+            continue
+        seen_ids.add(normalized["product_id"])
+        products.append(normalized)
+        if len(products) >= limit:
+            break
+
+    return products
+
+
+def _validate_and_normalize_naver_product(item: dict) -> Optional[dict]:
+    """네이버 쇼핑 검색 결과 1건을 검증하고 정규화한다. 유효하지 않으면 None."""
+    try:
+        title = _TAG_RE.sub("", item.get("title", "")).strip()
+        mall_name = (item.get("mallName") or "").strip()
+        product_id = str(item.get("productId") or "").strip()
+        price_raw = item.get("lprice")
+
+        if not title or not mall_name or not product_id or not price_raw:
+            return None
+
+        price = int(price_raw)
+        if not (_MIN_REASONABLE_PRICE <= price <= _MAX_REASONABLE_PRICE):
+            return None
+
+        category = item.get("category4") or item.get("category3") or item.get("category1") or ""
+
+        return {
+            "product_id": product_id,
+            "title": title,
+            "price": price,
+            "seller": mall_name,
+            "category": category,
+        }
+    except (TypeError, ValueError) as exc:
+        logger.warning("네이버 쇼핑 상품 데이터 형식 오류, 건너뜀: %s", exc)
+        return None
 
 
 # ==================== 3. 절대 월간 검색량 (네이버 검색광고 API) ====================

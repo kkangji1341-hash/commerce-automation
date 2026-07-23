@@ -56,11 +56,21 @@ export default function ProductCard({
       <div className="flex items-center gap-2 text-xs text-gray-400">
         <span className="rounded bg-gray-100 px-1.5 py-0.5">{product.source_platform}</span>
         <span>점수 {product.product_score.toFixed(0)}/100</span>
+        {product.is_estimated && (
+          <span
+            className="rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700"
+            title="원가 등 소싱 정보가 실제 공급처 데이터가 아니라 네이버 판매가 기반 추정치입니다"
+          >
+            ⚠ 원가 추정치
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
-          <p className="text-gray-500">원가 / 판매가</p>
+          <p className="text-gray-500">
+            원가 / 판매가{product.is_estimated && <span className="text-yellow-600"> (추정)</span>}
+          </p>
           <p className="font-medium text-gray-900">
             {currency(product.cost_of_goods)} / {currency(product.recommended_selling_price)}
           </p>
