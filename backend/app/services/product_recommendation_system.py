@@ -33,6 +33,9 @@ class SourceProduct:
     quality_score: float         # 품질 점수 (0-100)
     supplier_rating: float       # 공급처 평가 (0-5)
     stock_quantity: int          # 재고량
+    # 키워드 매칭용 카테고리 태그(한/영 혼용). product_name이 영문이라 한글 키워드와
+    # 문자열 매칭이 안 되는 문제를 피하기 위해 별도로 둔다.
+    category_keywords: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -178,6 +181,10 @@ class ProductRecommendationEngine:
             if not self._is_affordable(source_product, budget):
                 continue
 
+            # 필터: 키워드와 아예 무관한 카테고리는 추천에서 제외
+            if self._calculate_match_score(source_product, keyword_analysis.keyword) <= 0:
+                continue
+
             # 점수 계산
             recommended = self._score_product(
                 source_product=source_product,
@@ -319,26 +326,32 @@ class ProductRecommendationEngine:
         """
         상품이 키워드와 얼마나 잘 맞는가?
 
-        간단한 텍스트 매칭 (실제로는 더 복잡한 ML 사용)
+        product_name은 영문/한글이 섞여 있어 키워드(주로 한글)와 문자열이 직접
+        안 겹칠 수 있으므로, category_keywords(한/영 동의어 태그)로도 매칭을 시도한다.
+        둘 다 안 맞으면(=관련 없는 카테고리) 0점으로 추천 후보에서 제외한다.
         """
 
-        product_name_lower = product.product_name.lower()
-        keyword_lower = keyword.lower()
+        product_name_norm = product.product_name.lower().replace(" ", "")
+        keyword_norm = keyword.lower().replace(" ", "")
 
-        # 정확 일치: 100점
-        if keyword_lower in product_name_lower or product_name_lower in keyword_lower:
+        # 정확 일치(공백 무시): 100점
+        if keyword_norm and (keyword_norm in product_name_norm or product_name_norm in keyword_norm):
             return 100.0
 
-        # 부분 일치: 70점
-        # 예: "wireless" vs "무선"은 번역 문제 (실제로는 ML 사용)
-        keywords = keyword_lower.split()
-        matches = sum(1 for kw in keywords if kw in product_name_lower)
+        # 카테고리 태그 매칭: 90점 (예: "무선 이어폰" ↔ "wireless earbuds")
+        for tag in product.category_keywords:
+            tag_norm = tag.lower().replace(" ", "")
+            if tag_norm and (tag_norm in keyword_norm or keyword_norm in tag_norm):
+                return 90.0
 
+        # 토큰 단위 부분 일치 (상품명 기준)
+        tokens = keyword.lower().split()
+        matches = sum(1 for kw in tokens if kw in product.product_name.lower())
         if matches > 0:
-            return 50 + (matches / len(keywords)) * 50
+            return 50 + (matches / len(tokens)) * 50
 
-        # 유사 카테고리 (30점)
-        return 30.0
+        # 전혀 겹치지 않으면 무관한 카테고리로 간주 (매칭 없음)
+        return 0.0
 
     def _calculate_selling_price(
         self,
@@ -595,7 +608,8 @@ class ProductRecommendationEngine:
                 lead_time_days=15,
                 quality_score=88,
                 supplier_rating=4.7,
-                stock_quantity=10000
+                stock_quantity=10000,
+                category_keywords=["무선이어폰", "이어폰", "블루투스이어폰", "이어버드", "wireless earbuds", "bluetooth earbuds", "earbuds"],
             ),
             SourceProduct(
                 source_id="aliexpress_001",
@@ -607,7 +621,8 @@ class ProductRecommendationEngine:
                 lead_time_days=20,
                 quality_score=75,
                 supplier_rating=4.3,
-                stock_quantity=5000
+                stock_quantity=5000,
+                category_keywords=["무선이어폰", "이어폰", "블루투스이어폰", "이어버드", "wireless earbuds", "bluetooth earbuds", "earbuds"],
             ),
             SourceProduct(
                 source_id="dhgate_001",
@@ -619,7 +634,8 @@ class ProductRecommendationEngine:
                 lead_time_days=25,
                 quality_score=65,
                 supplier_rating=4.0,
-                stock_quantity=20000
+                stock_quantity=20000,
+                category_keywords=["무선이어폰", "이어폰", "블루투스이어폰", "이어버드", "wireless earbuds", "bluetooth earbuds", "earbuds"],
             ),
             SourceProduct(
                 source_id="domestic_001",
@@ -630,6 +646,7 @@ class ProductRecommendationEngine:
                 min_order_quantity=20,
                 lead_time_days=5,
                 quality_score=92,
+                category_keywords=["무선이어폰", "이어폰", "블루투스이어폰", "이어버드", "wireless earbuds", "bluetooth earbuds", "earbuds"],
                 supplier_rating=4.9,
                 stock_quantity=500
             ),
