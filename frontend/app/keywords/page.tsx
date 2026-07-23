@@ -56,12 +56,18 @@ export default function KeywordsPage() {
       {result && (
         <>
           <AnalysisResult result={result} searchTrend={lastTrend} />
-          <div className="flex justify-end gap-3 text-sm">
+          <div className="flex flex-col items-end gap-2 text-sm sm:flex-row sm:items-center sm:justify-end sm:gap-4">
             <Link
               href={`/products?keywordId=${result.id}`}
-              className="font-medium text-primary-600 hover:underline"
+              className="flex min-h-[44px] items-center font-medium text-gray-500 hover:underline"
             >
-              이 키워드로 상품 추천 받기 →
+              참고: 상품 추천 보기 →
+            </Link>
+            <Link
+              href={`/calculator?keywordId=${result.id}`}
+              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-medium text-white hover:bg-primary-700 sm:w-auto"
+            >
+              🧮 마진 계산하기
             </Link>
           </div>
         </>

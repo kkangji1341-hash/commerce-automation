@@ -7,7 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 const NAV_ITEMS = [
   { href: "/", label: "대시보드", icon: "🏠" },
   { href: "/keywords", label: "키워드 분석", icon: "🔍" },
-  { href: "/products", label: "상품 추천", icon: "📦" },
+  { href: "/calculator", label: "마진 계산기", icon: "🧮" },
+  { href: "/products", label: "상품 추천 (참고용)", icon: "📦" },
   { href: "/my-products", label: "마이페이지", icon: "👤" },
 ];
 

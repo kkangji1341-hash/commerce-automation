@@ -5,7 +5,10 @@ import type {
   KeywordFetchAutoResponse,
   KeywordHistoryResponse,
   LoginInput,
+  MyCalculationsResponse,
   MyProductsResponse,
+  ProductCalculation,
+  ProductCalculationInput,
   ProductRecommendInput,
   ProductRecommendResponse,
   SignupInput,
@@ -150,6 +153,30 @@ export async function recommendProducts(
 export async function getMyProducts(): Promise<MyProductsResponse> {
   const { data } = await client.get<MyProductsResponse>("/products/my-products");
   return data;
+}
+
+export async function createCalculation(
+  input: ProductCalculationInput
+): Promise<ProductCalculation> {
+  const { data } = await client.post<ProductCalculation>("/calculations/create", input);
+  return data;
+}
+
+export async function getMyCalculations(): Promise<MyCalculationsResponse> {
+  const { data } = await client.get<MyCalculationsResponse>("/calculations/my-calculations");
+  return data;
+}
+
+export async function updateCalculation(
+  id: number,
+  input: Omit<ProductCalculationInput, "keyword_analysis_id">
+): Promise<ProductCalculation> {
+  const { data } = await client.put<ProductCalculation>(`/calculations/${id}`, input);
+  return data;
+}
+
+export async function deleteCalculation(id: number): Promise<void> {
+  await client.delete(`/calculations/${id}`);
 }
 
 export default client;

@@ -135,3 +135,33 @@ export interface KeywordFetchAutoResponse {
 export interface CachedKeywordInput extends KeywordAnalysisInput {
   analysisId: number;
 }
+
+export interface ProductCalculationInput {
+  keyword_analysis_id?: number | null;
+  product_name: string;
+  cost: number;
+  shipping_cost: number;
+  margin_rate: number; // 1.0 = 100%
+  monthly_searches: number;
+}
+
+export interface ProductCalculation {
+  id: number;
+  keyword_analysis_id: number | null;
+  product_name: string;
+  cost: number;
+  shipping_cost: number;
+  margin_rate: number;
+  monthly_searches: number;
+  selling_price: number;
+  monthly_sales_estimate: number;
+  monthly_revenue: number;
+  monthly_profit: number;
+  roi_percent: number;
+  created_at: string;
+}
+
+export interface MyCalculationsResponse {
+  items: ProductCalculation[];
+  total: number;
+}
