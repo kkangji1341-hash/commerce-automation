@@ -313,6 +313,85 @@ def fetch_naver_monthly_searches(keyword: str) -> Optional[int]:
     return pc + mobile
 
 
+# 네이버 광고 API의 compIdx는 이미 "낮음/중간/높음" 문자열로 온다 — 지어낼 필요 없음.
+_COMPETITION_MAP = {"낮음": "LOW", "중간": "MEDIUM", "높음": "HIGH"}
+
+
+def fetch_related_keywords(keyword: str, limit: int = 30) -> List[dict]:
+    """
+    네이버 검색광고 API(키워드 도구)로 시드 키워드의 실제 세부/연관 키워드를 가져온다.
+
+    keywordstool은 hintKeywords로 준 키워드와 "관련성 있다고 판단되는" 키워드를
+    수백 개까지 함께 반환하는데, 그중 상당수는 실제로는 다른 카테고리 상품이다
+    (예: "우산" 검색 시 "지갑", "가디건"도 섞여 나옴 — 광고 타겟팅용 유사군집이지
+    진짜 세부 키워드가 아니기 때문). 그래서 relKeyword에 시드 키워드 문자열이
+    실제로 포함된 것만 "세부 키워드"로 취급해 필터링한다.
+
+    검색량/클릭률/경쟁도 전부 실측값이며 절대 지어내지 않는다. 실패 시 빈 리스트.
+    """
+    api_key = os.getenv("NAVER_AD_API_KEY")
+    secret_key = os.getenv("NAVER_AD_SECRET_KEY")
+    customer_id = os.getenv("NAVER_AD_CUSTOMER_ID")
+    if not (api_key and secret_key and customer_id):
+        logger.warning("NAVER_AD_* 미설정 — 세부 키워드 조회 건너뜀")
+        return []
+
+    hint_keyword = keyword.replace(" ", "")
+    headers = _naver_ad_headers("GET", NAVER_AD_KEYWORDSTOOL_URI, api_key, secret_key, customer_id)
+
+    try:
+        response = requests.get(
+            NAVER_AD_BASE_URL + NAVER_AD_KEYWORDSTOOL_URI,
+            headers=headers,
+            params={"hintKeywords": hint_keyword, "showDetail": "1"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        items = response.json().get("keywordList", [])
+    except requests.exceptions.RequestException as exc:
+        logger.warning("네이버 세부 키워드 조회 실패: keyword=%r, %s", keyword, exc)
+        return []
+    except ValueError as exc:
+        logger.warning("네이버 세부 키워드 응답 파싱 실패: keyword=%r, %s", keyword, exc)
+        return []
+
+    results: List[dict] = []
+    for item in items:
+        rel_keyword = item.get("relKeyword", "")
+        if hint_keyword not in rel_keyword or rel_keyword == hint_keyword:
+            continue
+
+        pc_qc = _parse_naver_count(item.get("monthlyPcQcCnt", 0))
+        mobile_qc = _parse_naver_count(item.get("monthlyMobileQcCnt", 0))
+        total_qc = pc_qc + mobile_qc
+
+        try:
+            pc_ctr = float(item.get("monthlyAvePcCtr", 0) or 0)
+            mobile_ctr = float(item.get("monthlyAveMobileCtr", 0) or 0)
+        except (TypeError, ValueError):
+            pc_ctr = mobile_ctr = 0.0
+
+        # PC/모바일 검색량 비중으로 가중평균 (한쪽 채널 검색량이 0이면 단순평균으로 대체)
+        if total_qc > 0:
+            click_rate = (pc_ctr * pc_qc + mobile_ctr * mobile_qc) / total_qc
+        else:
+            click_rate = (pc_ctr + mobile_ctr) / 2
+
+        competition = _COMPETITION_MAP.get(item.get("compIdx", ""), "MEDIUM")
+
+        results.append(
+            {
+                "keyword": rel_keyword,
+                "monthly_searches": total_qc,
+                "click_rate": round(click_rate, 2),
+                "competition": competition,
+            }
+        )
+
+    results.sort(key=lambda x: x["monthly_searches"], reverse=True)
+    return results[:limit]
+
+
 # ==================== 통합 ====================
 
 def fetch_keyword_data(keyword: str) -> KeywordCrawlResult:

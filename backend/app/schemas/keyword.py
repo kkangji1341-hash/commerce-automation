@@ -82,3 +82,26 @@ class KeywordFetchAutoResponse(BaseModel):
     seller_count_source: str | None = None
     status: str  # success | partial_success | failed
     message: str
+
+
+class AnalyzeAndGenerateRequest(BaseModel):
+    keyword: str = Field(..., min_length=1)
+
+    @field_validator("keyword")
+    @classmethod
+    def keyword_must_be_meaningful(cls, v: str) -> str:
+        return _validate_keyword(v)
+
+
+class KeywordVariantResponse(BaseModel):
+    keyword: str
+    monthly_searches: int
+    click_rate: float
+    competition: str
+    score: float
+
+
+class AnalyzeAndGenerateResponse(BaseModel):
+    main_keyword: str
+    top_variants: List[KeywordVariantResponse]
+    generated_product_names: List[str]

@@ -9,6 +9,8 @@ from app.api.deps import get_current_user, get_current_user_optional
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.keyword import (
+    AnalyzeAndGenerateRequest,
+    AnalyzeAndGenerateResponse,
     KeywordAnalysisHistoryResponse,
     KeywordAnalysisRequest,
     KeywordAnalysisResponse,
@@ -16,6 +18,7 @@ from app.schemas.keyword import (
     KeywordFetchAutoResponse,
 )
 from app.services.keyword_service import analyze_and_save, fetch_auto, get_history
+from app.services.product_name_generator import analyze_and_generate
 
 router = APIRouter()
 
@@ -43,3 +46,8 @@ async def keyword_history(
 ):
     items = await get_history(db, user_id=current_user.id)
     return KeywordAnalysisHistoryResponse(items=items, total=len(items))
+
+
+@router.post("/analyze-and-generate", response_model=AnalyzeAndGenerateResponse)
+async def analyze_and_generate_products(request: AnalyzeAndGenerateRequest):
+    return await analyze_and_generate(request.keyword)

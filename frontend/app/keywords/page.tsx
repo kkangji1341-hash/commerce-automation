@@ -5,6 +5,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import KeywordForm from "@/components/Keyword/KeywordForm";
 import AnalysisResult from "@/components/Keyword/AnalysisResult";
+import VariantExplorer from "@/components/Keyword/VariantExplorer";
 import Loading from "@/components/Common/Loading";
 import ErrorMessage from "@/components/Common/Error";
 import { analyzeKeyword } from "@/lib/api";
@@ -47,7 +48,10 @@ export default function KeywordsPage() {
         </p>
       </div>
 
+      <VariantExplorer />
+
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-700">키워드 상세 분석</h2>
         <KeywordForm onSubmit={handleSubmit} isLoading={isLoading} />
       </div>
 

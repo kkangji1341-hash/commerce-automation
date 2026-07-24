@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import type {
+  AnalyzeAndGenerateResponse,
   KeywordAnalysisInput,
   KeywordAnalysisResult,
   KeywordFetchAutoResponse,
@@ -140,6 +141,13 @@ export async function fetchKeywordAuto(keyword: string): Promise<KeywordFetchAut
 
 export async function getKeywordHistory(): Promise<KeywordHistoryResponse> {
   const { data } = await client.get<KeywordHistoryResponse>("/keywords/history");
+  return data;
+}
+
+export async function analyzeAndGenerate(keyword: string): Promise<AnalyzeAndGenerateResponse> {
+  const { data } = await client.post<AnalyzeAndGenerateResponse>("/keywords/analyze-and-generate", {
+    keyword,
+  });
   return data;
 }
 

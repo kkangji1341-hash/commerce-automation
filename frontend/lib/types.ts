@@ -136,6 +136,20 @@ export interface CachedKeywordInput extends KeywordAnalysisInput {
   analysisId: number;
 }
 
+export interface KeywordVariant {
+  keyword: string;
+  monthly_searches: number;
+  click_rate: number;
+  competition: CompetitionLevel;
+  score: number;
+}
+
+export interface AnalyzeAndGenerateResponse {
+  main_keyword: string;
+  top_variants: KeywordVariant[];
+  generated_product_names: string[];
+}
+
 export interface ProductCalculationInput {
   keyword_analysis_id?: number | null;
   product_name: string;
