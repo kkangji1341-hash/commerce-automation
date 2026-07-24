@@ -16,7 +16,9 @@ import type { KeywordAnalysisResult } from "@/lib/types";
 // _compute_financials()와 반드시 같아야 한다 — 실시간 미리보기가 저장 결과와
 // 어긋나면 안 되기 때문. 값을 바꿀 땐 양쪽을 함께 수정할 것.
 const STORE_FEE_RATE = 0.0563;
+const RETURN_FEE_RATE = 0.0363;
 const SHIPPING_FEE_RATE = 0.0363;
+const AD_RATE_IN_PRICE = 0.05;
 const VAT_RATE = 0.1;
 
 // product_recommendation_system.DEFAULT_COST_RATIO와 동일한 기본 원가율.
@@ -27,8 +29,8 @@ function currency(n: number) {
   return `₩${Math.round(n).toLocaleString()}`;
 }
 
-function roundTo10(n: number) {
-  return Math.round(n / 10) * 10;
+function roundUpTo10(n: number) {
+  return Math.ceil(Math.round(n * 1e6) / 1e6 / 10) * 10;
 }
 
 function CalculatorPageContent() {
@@ -84,19 +86,22 @@ function CalculatorPageContent() {
   }
 
   const preview = useMemo(() => {
-    // 판매가는 원가 자체에만 마진율+부가세를 얹는다. 구입처 배송비는 판매가 산정에는
-    // 관여하지 않고 최종 마진을 깎는 비용으로만 별도 반영한다.
-    const sellingPrice = roundTo10(cost * (1 + marginRate) * (1 + VAT_RATE));
-    const storeFee = sellingPrice * STORE_FEE_RATE;
+    // base = (원가 + 원가×마진율) × 1.1 — 스토어수수료/반품배송비수수료/광고비(5%)를
+    // 전부 판매가에 얹어(gross-up) 10원 단위로 올림한 값이 실제 판매가다.
+    // 구입처 배송비는 실제 엑셀에서도 이 계산식에 쓰이지 않는 참고용 입력이다.
+    const base = cost * (1 + marginRate) * (1 + VAT_RATE);
+    const storeFee = base * STORE_FEE_RATE;
+    const returnFee = sellingShipping * RETURN_FEE_RATE * 2;
+    const adInPrice = base * AD_RATE_IN_PRICE;
+    const sellingPrice = roundUpTo10(base + storeFee + returnFee + adInPrice);
+
     const shippingFee = sellingShipping * SHIPPING_FEE_RATE;
-    const returnFee = sellingShipping * SHIPPING_FEE_RATE * 2;
     const vat = sellingPrice * VAT_RATE;
-    const finalMargin = Math.round(
-      sellingPrice - cost - costShipping - storeFee - shippingFee - returnFee - vat - adCost - benefitsCost
-    );
+    const marginBeforeAd = sellingPrice - cost - storeFee - returnFee - vat - benefitsCost;
+    const finalMargin = Math.round(marginBeforeAd - adCost);
     const finalMarginRate = sellingPrice > 0 ? finalMargin / sellingPrice : 0;
     return { sellingPrice, storeFee, shippingFee, returnFee, vat, finalMargin, finalMarginRate };
-  }, [cost, costShipping, sellingShipping, marginRate, adCost, benefitsCost]);
+  }, [cost, sellingShipping, marginRate, adCost, benefitsCost]);
 
   async function handleSave() {
     if (!productName.trim()) {
@@ -194,7 +199,9 @@ function CalculatorPageContent() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">구입처 배송비 (₩)</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                구입처 배송비 (₩) <span className="text-gray-400">(참고용, 마진 계산 미반영)</span>
+              </label>
               <input
                 type="number"
                 min={0}
@@ -292,14 +299,8 @@ function CalculatorPageContent() {
             <dt className="text-gray-500">원가</dt>
             <dd className="text-right text-gray-900">-{currency(cost)}</dd>
 
-            <dt className="text-gray-500">구입처 배송비</dt>
-            <dd className="text-right text-gray-900">-{currency(costShipping)}</dd>
-
             <dt className="text-gray-500">스토어 수수료 (5.63%)</dt>
             <dd className="text-right text-gray-900">-{currency(preview.storeFee)}</dd>
-
-            <dt className="text-gray-500">배송비 연동 수수료 (3.63%)</dt>
-            <dd className="text-right text-gray-900">-{currency(preview.shippingFee)}</dd>
 
             <dt className="text-gray-500">반품 배송비 수수료</dt>
             <dd className="text-right text-gray-900">-{currency(preview.returnFee)}</dd>
