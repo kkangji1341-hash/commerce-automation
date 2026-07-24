@@ -187,4 +187,9 @@ export async function deleteCalculation(id: number): Promise<void> {
   await client.delete(`/calculations/${id}`);
 }
 
+export async function hideCalculation(id: number): Promise<ProductCalculation> {
+  const { data } = await client.patch<ProductCalculation>(`/calculations/${id}/hide`);
+  return data;
+}
+
 export default client;

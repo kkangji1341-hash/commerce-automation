@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import Loading from "@/components/Common/Loading";
 import ErrorMessage from "@/components/Common/Error";
 import Button from "@/components/Common/Button";
-import { deleteCalculation, getMyCalculations, updateCalculation } from "@/lib/api";
+import { deleteCalculation, getMyCalculations, hideCalculation, updateCalculation } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import type { ProductCalculation } from "@/lib/types";
@@ -17,9 +17,11 @@ function currency(n: number) {
 interface EditState {
   product_name: string;
   cost: number;
-  shipping_cost: number;
+  cost_shipping: number;
+  selling_shipping: number;
   margin_rate: number;
-  monthly_searches: number;
+  ad_cost: number;
+  benefits_cost: number;
 }
 
 export default function MyCalculationsPage() {
@@ -51,9 +53,11 @@ export default function MyCalculationsPage() {
     setEditState({
       product_name: item.product_name,
       cost: item.cost,
-      shipping_cost: item.shipping_cost,
+      cost_shipping: item.cost_shipping,
+      selling_shipping: item.selling_shipping,
       margin_rate: item.margin_rate,
-      monthly_searches: item.monthly_searches ?? 0,
+      ad_cost: item.ad_cost,
+      benefits_cost: item.benefits_cost,
     });
   }
 
@@ -74,7 +78,7 @@ export default function MyCalculationsPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("이 계산 결과를 삭제할까요?")) return;
+    if (!confirm("이 계산 결과를 완전히 삭제할까요?")) return;
     try {
       await deleteCalculation(id);
       toast.success("삭제했습니다");
@@ -84,13 +88,23 @@ export default function MyCalculationsPage() {
     }
   }
 
+  async function handleHide(id: number) {
+    try {
+      await hideCalculation(id);
+      toast.success("목록에서 숨겼습니다");
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    } catch (err) {
+      toast.error(getErrorMessage(err, "숨기기에 실패했습니다"));
+    }
+  }
+
   if (!isReady) return <Loading />;
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4 pb-20 sm:p-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">저장한 마진 계산 ({items.length})</h1>
-        <p className="mt-1 text-sm text-gray-500">계산기에서 저장한 상품별 원가/판매가/ROI를 비교하세요</p>
+        <p className="mt-1 text-sm text-gray-500">계산기에서 저장한 상품별 판매가와 마진을 비교하세요</p>
       </div>
 
       {error && <ErrorMessage message={error} />}
@@ -126,17 +140,6 @@ export default function MyCalculationsPage() {
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-gray-500">배송료</label>
-                        <input
-                          type="number"
-                          value={editState.shipping_cost}
-                          onChange={(e) =>
-                            setEditState({ ...editState, shipping_cost: Number(e.target.value) })
-                          }
-                          className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div>
                         <label className="mb-1 block text-xs text-gray-500">마진율(%)</label>
                         <input
                           type="number"
@@ -148,12 +151,43 @@ export default function MyCalculationsPage() {
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-gray-500">월간 검색량</label>
+                        <label className="mb-1 block text-xs text-gray-500">구입처 배송비</label>
                         <input
                           type="number"
-                          value={editState.monthly_searches}
+                          value={editState.cost_shipping}
                           onChange={(e) =>
-                            setEditState({ ...editState, monthly_searches: Number(e.target.value) })
+                            setEditState({ ...editState, cost_shipping: Number(e.target.value) })
+                          }
+                          className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-gray-500">판매 배송비</label>
+                        <input
+                          type="number"
+                          value={editState.selling_shipping}
+                          onChange={(e) =>
+                            setEditState({ ...editState, selling_shipping: Number(e.target.value) })
+                          }
+                          className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-gray-500">광고비</label>
+                        <input
+                          type="number"
+                          value={editState.ad_cost}
+                          onChange={(e) => setEditState({ ...editState, ad_cost: Number(e.target.value) })}
+                          className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-gray-500">스토어 혜택</label>
+                        <input
+                          type="number"
+                          value={editState.benefits_cost}
+                          onChange={(e) =>
+                            setEditState({ ...editState, benefits_cost: Number(e.target.value) })
                           }
                           className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                         />
@@ -187,6 +221,12 @@ export default function MyCalculationsPage() {
                           수정
                         </button>
                         <button
+                          onClick={() => handleHide(item.id)}
+                          className="flex min-h-[44px] items-center text-xs font-medium text-gray-500 hover:underline"
+                        >
+                          숨기기
+                        </button>
+                        <button
                           onClick={() => handleDelete(item.id)}
                           className="flex min-h-[44px] items-center text-xs font-medium text-red-600 hover:underline"
                         >
@@ -194,24 +234,30 @@ export default function MyCalculationsPage() {
                         </button>
                       </div>
                     </div>
+                    <div className="mb-3 rounded-xl bg-primary-50 p-3 text-center">
+                      <p className="text-[11px] text-gray-500">판매가</p>
+                      <p className="text-2xl font-extrabold text-primary-700">
+                        {currency(item.selling_price)}
+                      </p>
+                    </div>
                     <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                       <div>
-                        <p className="text-gray-500">원가 / 판매가</p>
-                        <p className="font-medium text-gray-900">
-                          {currency(item.cost)} / {currency(item.selling_price)}
-                        </p>
+                        <p className="text-gray-500">원가</p>
+                        <p className="font-medium text-gray-900">{currency(item.cost)}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">마진율</p>
                         <p className="font-medium text-gray-900">{Math.round(item.margin_rate * 100)}%</p>
                       </div>
                       <div>
-                        <p className="text-gray-500">예상 월이익</p>
-                        <p className="font-medium text-gray-900">{currency(item.monthly_profit)}</p>
+                        <p className="text-gray-500">최종 마진</p>
+                        <p className="font-medium text-gray-900">{currency(item.final_margin)}</p>
                       </div>
                       <div>
-                        <p className="text-gray-500">ROI</p>
-                        <p className="font-medium text-primary-600">{item.roi_percent.toFixed(0)}%</p>
+                        <p className="text-gray-500">최종 마진율</p>
+                        <p className="font-medium text-primary-600">
+                          {(item.final_margin_rate * 100).toFixed(1)}%
+                        </p>
                       </div>
                     </div>
                   </>

@@ -12,15 +12,23 @@ import { getErrorMessage } from "@/lib/errors";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import type { KeywordAnalysisResult } from "@/lib/types";
 
-// 백엔드 calculation_service.SALES_CONVERSION_RATE와 반드시 같은 값이어야
-// 실시간 미리보기와 저장 결과가 일치한다.
-const SALES_CONVERSION_RATE = 0.05;
+// 아래 상수/계산식은 backend/app/services/calculation_service.py의
+// _compute_financials()와 반드시 같아야 한다 — 실시간 미리보기가 저장 결과와
+// 어긋나면 안 되기 때문. 값을 바꿀 땐 양쪽을 함께 수정할 것.
+const STORE_FEE_RATE = 0.0563;
+const SHIPPING_FEE_RATE = 0.0363;
+const VAT_RATE = 0.1;
+
 // product_recommendation_system.DEFAULT_COST_RATIO와 동일한 기본 원가율.
 // "자동 조회"는 별도 API 호출 없이 이 비율을 그대로 재사용한 추정치다.
 const AUTO_COST_RATIO = 0.35;
 
 function currency(n: number) {
   return `₩${Math.round(n).toLocaleString()}`;
+}
+
+function roundTo10(n: number) {
+  return Math.round(n / 10) * 10;
 }
 
 function CalculatorPageContent() {
@@ -33,9 +41,12 @@ function CalculatorPageContent() {
 
   const [productName, setProductName] = useState("");
   const [cost, setCost] = useState<number>(0);
-  const [shippingCost, setShippingCost] = useState<number>(0);
-  const [marginRate, setMarginRate] = useState<number>(1.0); // 1.0 = 100%
-  const [monthlySearches, setMonthlySearches] = useState<number>(0);
+  const [costShipping, setCostShipping] = useState<number>(3000);
+  const [sellingShipping, setSellingShipping] = useState<number>(3000);
+  const [marginRate, setMarginRate] = useState<number>(0.15); // 0.15 = 15%
+  const [adCost, setAdCost] = useState<number>(50);
+  const [benefitsCost, setBenefitsCost] = useState<number>(0);
+  const [showDetail, setShowDetail] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +68,7 @@ function CalculatorPageContent() {
     setSelectedId(id);
     if (id === "manual") return;
     const item = history.find((h) => String(h.id) === id);
-    if (item) {
-      setMonthlySearches(item.monthly_searches);
-      if (!productName) setProductName(item.keyword);
-    }
+    if (item && !productName) setProductName(item.keyword);
   }
 
   const selectedAnalysis = history.find((h) => String(h.id) === selectedId) ?? null;
@@ -76,14 +84,18 @@ function CalculatorPageContent() {
   }
 
   const preview = useMemo(() => {
-    const sellingPrice = Math.round(cost * (1 + marginRate));
-    const monthlySalesEstimate = Math.round(monthlySearches * SALES_CONVERSION_RATE);
-    const monthlyRevenue = sellingPrice * monthlySalesEstimate;
-    const unitProfit = sellingPrice - cost - shippingCost;
-    const monthlyProfit = unitProfit * monthlySalesEstimate;
-    const roiPercent = cost > 0 ? (unitProfit / cost) * 100 : 0;
-    return { sellingPrice, monthlySalesEstimate, monthlyRevenue, monthlyProfit, roiPercent, unitProfit };
-  }, [cost, shippingCost, marginRate, monthlySearches]);
+    const totalCost = cost + costShipping;
+    const sellingPrice = roundTo10(totalCost * (1 + marginRate) * (1 + VAT_RATE));
+    const storeFee = sellingPrice * STORE_FEE_RATE;
+    const shippingFee = sellingShipping * SHIPPING_FEE_RATE;
+    const returnFee = sellingShipping * SHIPPING_FEE_RATE * 2;
+    const vat = sellingPrice * VAT_RATE;
+    const finalMargin = Math.round(
+      sellingPrice - totalCost - storeFee - shippingFee - returnFee - vat - adCost - benefitsCost
+    );
+    const finalMarginRate = sellingPrice > 0 ? finalMargin / sellingPrice : 0;
+    return { sellingPrice, storeFee, shippingFee, returnFee, vat, finalMargin, finalMarginRate };
+  }, [cost, costShipping, sellingShipping, marginRate, adCost, benefitsCost]);
 
   async function handleSave() {
     if (!productName.trim()) {
@@ -101,11 +113,13 @@ function CalculatorPageContent() {
         keyword_analysis_id: selectedAnalysis?.id ?? null,
         product_name: productName.trim(),
         cost,
-        shipping_cost: shippingCost,
+        cost_shipping: costShipping,
+        selling_shipping: sellingShipping,
         margin_rate: marginRate,
-        monthly_searches: monthlySearches,
+        ad_cost: adCost,
+        benefits_cost: benefitsCost,
       });
-      toast.success("마진 계산 결과를 저장했습니다");
+      toast.success("이 상품을 저장했습니다");
       router.push("/my-calculations");
     } catch (err) {
       setError(getErrorMessage(err, "저장에 실패했습니다"));
@@ -121,9 +135,7 @@ function CalculatorPageContent() {
       <div className="flex items-start justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">마진 계산기</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            원가와 마진율을 입력하면 판매가·예상 이익·ROI를 바로 계산해드려요
-          </p>
+          <p className="mt-1 text-sm text-gray-500">원가를 입력하면 판매가를 계산해드려요</p>
         </div>
         <Link
           href="/my-calculations"
@@ -136,7 +148,7 @@ function CalculatorPageContent() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="mb-5">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            키워드 선택 (히스토리에서 선택)
+            키워드 선택 (히스토리에서 선택, 선택)
           </label>
           <select
             value={selectedId}
@@ -146,8 +158,7 @@ function CalculatorPageContent() {
             <option value="manual">직접 입력</option>
             {history.map((h) => (
               <option key={h.id} value={h.id}>
-                {h.keyword} (월 검색량 {h.monthly_searches.toLocaleString()}) ·{" "}
-                {new Date(h.created_at).toLocaleDateString()}
+                {h.keyword} · {new Date(h.created_at).toLocaleDateString()}
               </option>
             ))}
           </select>
@@ -178,26 +189,34 @@ function CalculatorPageContent() {
                 자동 조회
               </Button>
             </div>
-            <p className="mt-1 text-[11px] text-gray-400">
-              자동 조회는 선택한 키워드의 네이버 평균 판매가 × 35%(가정)로 원가를 추정합니다. 실제 소싱
-              원가로 반드시 확인 후 사용하세요.
-            </p>
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">배송료 (₩)</label>
-            <input
-              type="number"
-              min={0}
-              value={shippingCost || ""}
-              onChange={(e) => setShippingCost(Number(e.target.value))}
-              className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">구입처 배송비 (₩)</label>
+              <input
+                type="number"
+                min={0}
+                value={costShipping}
+                onChange={(e) => setCostShipping(Number(e.target.value))}
+                className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">판매 배송비 (₩)</label>
+              <input
+                type="number"
+                min={0}
+                value={sellingShipping}
+                onChange={(e) => setSellingShipping(Number(e.target.value))}
+                className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
           </div>
 
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">마진율</label>
+              <label className="text-sm font-medium text-gray-700">마진율 조정</label>
               <span className="text-sm font-semibold text-primary-600">
                 {Math.round(marginRate * 100)}%
               </span>
@@ -205,63 +224,107 @@ function CalculatorPageContent() {
             <input
               type="range"
               min={0}
-              max={5}
-              step={0.05}
+              max={2}
+              step={0.01}
               value={marginRate}
               onChange={(e) => setMarginRate(Number(e.target.value))}
               className="h-11 w-full"
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">월간 검색량</label>
-            <input
-              type="number"
-              min={0}
-              value={monthlySearches || ""}
-              onChange={(e) => setMonthlySearches(Number(e.target.value))}
-              className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            />
-            <p className="mt-1 text-[11px] text-gray-400">
-              예상 월판매량 = 월간 검색량 × {SALES_CONVERSION_RATE * 100}%
-            </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                광고비 (₩) <span className="text-gray-400">(선택)</span>
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={adCost}
+                onChange={(e) => setAdCost(Number(e.target.value))}
+                className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                스토어 혜택 (₩) <span className="text-gray-400">(선택)</span>
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={benefitsCost}
+                onChange={(e) => setBenefitsCost(Number(e.target.value))}
+                className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-primary-100 bg-primary-50 p-6">
-        <h2 className="mb-4 text-sm font-semibold text-gray-700">실시간 계산 결과</h2>
-        <dl className="grid grid-cols-2 gap-y-3 text-sm">
-          <dt className="text-gray-500">판매가</dt>
-          <dd className="text-right font-semibold text-gray-900">{currency(preview.sellingPrice)}</dd>
+      <div className="rounded-2xl border border-primary-100 bg-primary-50 p-6 text-center">
+        <p className="text-xs text-gray-500">🎯 판매가 (마진율 {Math.round(marginRate * 100)}% + 부가세 10% 포함)</p>
+        <p className="mt-1 text-4xl font-extrabold text-primary-700">{currency(preview.sellingPrice)}</p>
 
-          <dt className="text-gray-500">예상 월판매</dt>
-          <dd className="text-right font-semibold text-gray-900">
-            {preview.monthlySalesEstimate.toLocaleString()}개
-          </dd>
+        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-primary-100 pt-4 text-sm">
+          <div>
+            <p className="text-gray-500">최종 마진</p>
+            <p className="text-lg font-bold text-gray-900">{currency(preview.finalMargin)}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">최종 마진율</p>
+            <p className="text-lg font-bold text-gray-900">{(preview.finalMarginRate * 100).toFixed(1)}%</p>
+          </div>
+        </div>
+      </div>
 
-          <dt className="text-gray-500">월매출</dt>
-          <dd className="text-right font-semibold text-gray-900">{currency(preview.monthlyRevenue)}</dd>
+      <div className="rounded-2xl border border-gray-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setShowDetail((v) => !v)}
+          className="flex min-h-[44px] w-full items-center justify-between px-5 text-sm font-medium text-gray-700"
+        >
+          세부 비용 확인
+          <span>{showDetail ? "▲" : "▼"}</span>
+        </button>
+        {showDetail && (
+          <dl className="grid grid-cols-2 gap-y-2 border-t border-gray-100 px-5 py-4 text-sm">
+            <dt className="text-gray-500">원가 (+배송비)</dt>
+            <dd className="text-right text-gray-900">{currency(cost + costShipping)}</dd>
 
-          <dt className="text-gray-500">단가 이익</dt>
-          <dd className="text-right font-semibold text-gray-900">{currency(preview.unitProfit)}</dd>
+            <dt className="text-gray-500">스토어 수수료 (5.63%)</dt>
+            <dd className="text-right text-gray-900">-{currency(preview.storeFee)}</dd>
 
-          <dt className="text-gray-500">월이익 (순이익)</dt>
-          <dd className="text-right text-lg font-bold text-primary-700">
-            {currency(preview.monthlyProfit)}
-          </dd>
+            <dt className="text-gray-500">배송비 연동 수수료 (3.63%)</dt>
+            <dd className="text-right text-gray-900">-{currency(preview.shippingFee)}</dd>
 
-          <dt className="text-gray-500">ROI</dt>
-          <dd className="text-right text-lg font-bold text-primary-700">
-            {preview.roiPercent.toFixed(0)}%
-          </dd>
-        </dl>
+            <dt className="text-gray-500">반품 배송비 수수료</dt>
+            <dd className="text-right text-gray-900">-{currency(preview.returnFee)}</dd>
+
+            <dt className="text-gray-500">부가세 (10%)</dt>
+            <dd className="text-right text-gray-900">-{currency(preview.vat)}</dd>
+
+            <dt className="text-gray-500">광고비</dt>
+            <dd className="text-right text-gray-900">-{currency(adCost)}</dd>
+
+            {benefitsCost > 0 && (
+              <>
+                <dt className="text-gray-500">스토어 혜택</dt>
+                <dd className="text-right text-gray-900">-{currency(benefitsCost)}</dd>
+              </>
+            )}
+
+            <dt className="pt-2 font-semibold text-gray-700">최종 마진</dt>
+            <dd className="pt-2 text-right font-semibold text-primary-700">
+              {currency(preview.finalMargin)}
+            </dd>
+          </dl>
+        )}
       </div>
 
       {error && <ErrorMessage message={error} />}
 
       <Button onClick={handleSave} isLoading={isSaving} className="w-full">
-        저장
+        이 상품 저장
       </Button>
     </div>
   );

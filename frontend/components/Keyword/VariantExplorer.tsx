@@ -14,10 +14,10 @@ const COMPETITION_STYLE: Record<string, string> = {
   HIGH: "bg-red-100 text-red-700",
 };
 
-// 마진 계산기 기본값 — /calculator의 "자동 조회"와 동일한 원가율(35%), 스펙 예시와
-// 동일한 기본 마진율(300%)을 그대로 재사용한다.
+// 마진 계산기 기본값 — /calculator의 "자동 조회"와 동일한 원가율(35%)과
+// 기본 마진율(15%)을 그대로 재사용한다.
 const AUTO_COST_RATIO = 0.35;
-const DEFAULT_MARGIN_RATE = 3.0;
+const DEFAULT_MARGIN_RATE = 0.15;
 const DEFAULT_COST_FALLBACK = 10000; // 네이버 평균가 조회 실패 시에만 사용하는 최후 기본값
 
 export default function VariantExplorer() {
@@ -81,9 +81,11 @@ export default function VariantExplorer() {
         await createCalculation({
           product_name: name,
           cost,
-          shipping_cost: 0,
+          cost_shipping: 3000,
+          selling_shipping: 3000,
           margin_rate: DEFAULT_MARGIN_RATE,
-          monthly_searches: variant.monthly_searches,
+          ad_cost: 50,
+          benefits_cost: 0,
         });
         successCount += 1;
       }

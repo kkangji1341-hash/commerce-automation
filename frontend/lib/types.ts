@@ -154,9 +154,11 @@ export interface ProductCalculationInput {
   keyword_analysis_id?: number | null;
   product_name: string;
   cost: number;
-  shipping_cost: number;
-  margin_rate: number; // 1.0 = 100%
-  monthly_searches: number;
+  cost_shipping: number;
+  selling_shipping: number;
+  margin_rate: number; // 0.15 = 15%
+  ad_cost: number;
+  benefits_cost: number;
 }
 
 export interface ProductCalculation {
@@ -164,14 +166,19 @@ export interface ProductCalculation {
   keyword_analysis_id: number | null;
   product_name: string;
   cost: number;
-  shipping_cost: number;
+  cost_shipping: number;
+  selling_shipping: number;
   margin_rate: number;
-  monthly_searches: number;
+  ad_cost: number;
+  benefits_cost: number;
   selling_price: number;
-  monthly_sales_estimate: number;
-  monthly_revenue: number;
-  monthly_profit: number;
-  roi_percent: number;
+  store_fee: number;
+  shipping_fee: number;
+  return_fee: number;
+  vat: number;
+  final_margin: number;
+  final_margin_rate: number;
+  is_display: boolean;
   created_at: string;
 }
 

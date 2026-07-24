@@ -17,6 +17,7 @@ from app.services.calculation_service import (
     delete_calculation,
     get_calculation_for_user,
     get_my_calculations,
+    set_display,
     update_calculation,
 )
 
@@ -64,3 +65,15 @@ async def delete(
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계산 결과를 찾을 수 없습니다")
     await delete_calculation(db, record)
+
+
+@router.patch("/{calculation_id}/hide", response_model=ProductCalculationResponse)
+async def hide(
+    calculation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    record = await get_calculation_for_user(db, calculation_id, user_id=current_user.id)
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="계산 결과를 찾을 수 없습니다")
+    return await set_display(db, record, is_display=False)
