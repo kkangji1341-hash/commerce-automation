@@ -140,15 +140,27 @@ export default function VariantExplorer() {
 
           <div>
             <p className="mb-2 text-sm font-semibold text-gray-700">
-              상위 6개 후보 선택됨 (후보 {result.total_candidates_generated}개 중)
+              생성된 상품명 후보 {result.total_candidates_generated}개 (상위 6개 선택됨)
             </p>
-            <div className="flex flex-col gap-1">
-              {result.top_candidates.map((c) => (
-                <div key={c.name} className="flex min-h-[36px] items-center gap-2 rounded-lg bg-gray-50 px-3">
-                  <span className="text-primary-500">✓</span>
-                  <span className="text-sm text-gray-900">{c.name}</span>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+              {result.all_candidates.map((c) => {
+                const isSelected = result.top_candidates.some(
+                  (t) => t.variant === c.variant && t.modifier === c.modifier
+                );
+                return (
+                  <div
+                    key={`${c.variant}-${c.modifier}`}
+                    className={`flex min-h-[36px] items-center gap-2 rounded-lg px-3 ${
+                      isSelected ? "bg-primary-50 text-primary-900" : "bg-gray-50 text-gray-500"
+                    }`}
+                  >
+                    <span className={isSelected ? "text-primary-500" : "text-gray-300"}>
+                      {isSelected ? "✓" : "·"}
+                    </span>
+                    <span className="text-sm">{c.name}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

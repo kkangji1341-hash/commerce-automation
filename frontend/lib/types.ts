@@ -155,6 +155,7 @@ export interface AnalyzeAndGenerateResponse {
   main_keyword: string;
   top_variants: KeywordVariant[];
   total_candidates_generated: number;
+  all_candidates: NameCandidate[];
   top_candidates: NameCandidate[];
   final_title: string;
 }

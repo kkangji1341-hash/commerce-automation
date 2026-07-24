@@ -112,5 +112,6 @@ class AnalyzeAndGenerateResponse(BaseModel):
     main_keyword: str
     top_variants: List[KeywordVariantResponse]
     total_candidates_generated: int
+    all_candidates: List[NameCandidateResponse]
     top_candidates: List[NameCandidateResponse]
     final_title: str

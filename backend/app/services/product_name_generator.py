@@ -198,6 +198,7 @@ async def analyze_and_generate(keyword: str, top_n: int = 6) -> dict:
     top_variants = select_top_variants(variants, top_n=top_n)
 
     candidates = generate_candidates(top_variants)
+    all_candidates = sorted(candidates, key=lambda x: x["score"], reverse=True)
     top_candidates = select_top_candidates(candidates, top_n=top_n)
     final_title = generate_final_title(keyword, top_candidates)
 
@@ -205,6 +206,7 @@ async def analyze_and_generate(keyword: str, top_n: int = 6) -> dict:
         "main_keyword": keyword,
         "top_variants": top_variants,
         "total_candidates_generated": len(candidates),
+        "all_candidates": all_candidates,
         "top_candidates": top_candidates,
         "final_title": final_title,
     }
