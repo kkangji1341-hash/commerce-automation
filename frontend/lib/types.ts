@@ -154,6 +154,7 @@ export interface NameCandidate {
 export interface AnalyzeAndGenerateResponse {
   main_keyword: string;
   top_variants: KeywordVariant[];
+  brand_filtered_count: number;
   total_candidates_generated: number;
   all_candidates: NameCandidate[];
   top_candidates: NameCandidate[];

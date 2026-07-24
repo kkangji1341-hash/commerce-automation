@@ -111,6 +111,7 @@ class NameCandidateResponse(BaseModel):
 class AnalyzeAndGenerateResponse(BaseModel):
     main_keyword: str
     top_variants: List[KeywordVariantResponse]
+    brand_filtered_count: int
     total_candidates_generated: int
     all_candidates: List[NameCandidateResponse]
     top_candidates: List[NameCandidateResponse]

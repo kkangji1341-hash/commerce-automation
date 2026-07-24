@@ -101,6 +101,11 @@ export default function VariantExplorer() {
 
       {result && (
         <div className="mt-5 flex flex-col gap-4">
+          {result.brand_filtered_count > 0 && (
+            <p className="text-xs text-gray-400">
+              브랜드명 {result.brand_filtered_count}개 제외됨
+            </p>
+          )}
           <div className="overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full min-w-[520px] text-sm">
               <thead className="bg-gray-50 text-left text-xs text-gray-500">

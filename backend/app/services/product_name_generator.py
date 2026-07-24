@@ -48,6 +48,24 @@ GENERIC_MODIFIERS = [
 ]
 
 CANDIDATES_PER_VARIANT = 4  # 세부 키워드 1개당 생성할 후보 수 (6개 × 4 = 최대 24개)
+
+# 알려진 시중 브랜드명. GENERIC_MODIFIERS와 달리 이건 하드코딩해도 무방하다 —
+# "우산에만 통하는 규칙"이 아니라 "그 브랜드 이름 자체를 걸러내는 규칙"이라
+# 어떤 카테고리를 넣어도 똑같이 적용된다. 세부 키워드에 브랜드명이 섞여 있으면
+# ("오아탁상용선풍기") 그 브랜드가 아니면 못 파는 상품명이 나오므로 애초에
+# 후보에서 제외한다. 필요에 따라 계속 추가할 수 있다.
+KNOWN_BRAND_NAMES = {
+    # 가전/생활
+    "lg", "삼성", "갤럭시", "오아", "솔러스", "솔러스에어", "다이슨", "필립스",
+    "미라클", "쿠쿠", "현대", "대우", "동부", "금성", "샤오미", "화웨이",
+    # 의류/패션
+    "나이키", "아디다스", "뉴발란스", "컨버스", "리복", "푸마",
+    "언더아머", "라코스테", "톰브라운",
+    # 전자제품/오디오
+    "애플", "아이폰", "소니", "캐논", "니콘", "로지텍", "마이크로소프트",
+    "인텔", "amd", "jbl", "브리츠", "아이리버", "qcy", "보스", "젠하이저",
+    "비츠", "오디오테크니카", "뱅앤올룹슨", "akg", "블라우풍트",
+}
 MAX_FINAL_TOKENS = 6  # 최종 제목의 최대 단어 수 (메인 키워드 1개 포함)
 
 # 짧은 잔여 조각을 판별할 때 쓰는 "알려진 좋은 단어" 목록. GENERIC_MODIFIERS와
@@ -72,6 +90,21 @@ class NameCandidate(TypedDict):
     variant: str
     modifier: str
     score: float
+
+
+def _contains_brand_name(variant: str) -> bool:
+    lowered = variant.lower()
+    return any(brand in lowered for brand in KNOWN_BRAND_NAMES)
+
+
+def filter_brand_names(variants: List[KeywordVariant]) -> List[KeywordVariant]:
+    """세부 키워드 중 알려진 브랜드명이 포함된 것을 제거한다.
+
+    브랜드명이 섞인 세부 키워드로 상품명을 만들면 그 브랜드 상품이 아니면
+    팔 수 없는 제목이 나온다. select_top_variants로 점수를 매기기 전, 원본
+    후보군 단계에서 미리 걸러낸다.
+    """
+    return [v for v in variants if not _contains_brand_name(v["keyword"])]
 
 
 def calculate_competitiveness_score(
@@ -194,7 +227,9 @@ def generate_final_title(main_keyword: str, top_candidates: List[NameCandidate])
 
 
 async def analyze_and_generate(keyword: str, top_n: int = 6) -> dict:
-    variants = await asyncio.to_thread(fetch_related_keywords, keyword)
+    raw_variants = await asyncio.to_thread(fetch_related_keywords, keyword)
+    variants = filter_brand_names(raw_variants)
+    brand_filtered_count = len(raw_variants) - len(variants)
     top_variants = select_top_variants(variants, top_n=top_n)
 
     candidates = generate_candidates(top_variants)
@@ -205,6 +240,7 @@ async def analyze_and_generate(keyword: str, top_n: int = 6) -> dict:
     return {
         "main_keyword": keyword,
         "top_variants": top_variants,
+        "brand_filtered_count": brand_filtered_count,
         "total_candidates_generated": len(candidates),
         "all_candidates": all_candidates,
         "top_candidates": top_candidates,
