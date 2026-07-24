@@ -28,10 +28,9 @@ def _compute_financials(
     ad_cost: int,
     benefits_cost: int,
 ) -> dict:
-    # 판매가는 원가 + 구입처 배송비(총원가)를 기준으로 마진율과 부가세를 얹어 계산한다.
-    # (구입처 배송비를 입력받고도 계산에 안 쓰면 그 입력이 의미가 없어지므로 포함시킴)
-    total_cost = cost + cost_shipping
-    selling_price = _round_to_10(total_cost * (1 + margin_rate) * (1 + VAT_RATE))
+    # 판매가는 원가(원가 자체)에만 마진율과 부가세를 얹어 계산한다 — 구입처 배송비는
+    # 판매가 산정에는 관여하지 않고, 최종 마진을 깎는 비용으로만 별도 반영한다.
+    selling_price = _round_to_10(cost * (1 + margin_rate) * (1 + VAT_RATE))
 
     store_fee = selling_price * STORE_FEE_RATE
     shipping_fee = selling_shipping * SHIPPING_FEE_RATE
@@ -39,7 +38,15 @@ def _compute_financials(
     vat = selling_price * VAT_RATE
 
     final_margin = round(
-        selling_price - total_cost - store_fee - shipping_fee - return_fee - vat - ad_cost - benefits_cost
+        selling_price
+        - cost
+        - cost_shipping
+        - store_fee
+        - shipping_fee
+        - return_fee
+        - vat
+        - ad_cost
+        - benefits_cost
     )
     final_margin_rate = (final_margin / selling_price) if selling_price > 0 else 0.0
 

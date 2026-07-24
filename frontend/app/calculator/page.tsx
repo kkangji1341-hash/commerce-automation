@@ -84,14 +84,15 @@ function CalculatorPageContent() {
   }
 
   const preview = useMemo(() => {
-    const totalCost = cost + costShipping;
-    const sellingPrice = roundTo10(totalCost * (1 + marginRate) * (1 + VAT_RATE));
+    // 판매가는 원가 자체에만 마진율+부가세를 얹는다. 구입처 배송비는 판매가 산정에는
+    // 관여하지 않고 최종 마진을 깎는 비용으로만 별도 반영한다.
+    const sellingPrice = roundTo10(cost * (1 + marginRate) * (1 + VAT_RATE));
     const storeFee = sellingPrice * STORE_FEE_RATE;
     const shippingFee = sellingShipping * SHIPPING_FEE_RATE;
     const returnFee = sellingShipping * SHIPPING_FEE_RATE * 2;
     const vat = sellingPrice * VAT_RATE;
     const finalMargin = Math.round(
-      sellingPrice - totalCost - storeFee - shippingFee - returnFee - vat - adCost - benefitsCost
+      sellingPrice - cost - costShipping - storeFee - shippingFee - returnFee - vat - adCost - benefitsCost
     );
     const finalMarginRate = sellingPrice > 0 ? finalMargin / sellingPrice : 0;
     return { sellingPrice, storeFee, shippingFee, returnFee, vat, finalMargin, finalMarginRate };
@@ -288,8 +289,11 @@ function CalculatorPageContent() {
         </button>
         {showDetail && (
           <dl className="grid grid-cols-2 gap-y-2 border-t border-gray-100 px-5 py-4 text-sm">
-            <dt className="text-gray-500">원가 (+배송비)</dt>
-            <dd className="text-right text-gray-900">{currency(cost + costShipping)}</dd>
+            <dt className="text-gray-500">원가</dt>
+            <dd className="text-right text-gray-900">-{currency(cost)}</dd>
+
+            <dt className="text-gray-500">구입처 배송비</dt>
+            <dd className="text-right text-gray-900">-{currency(costShipping)}</dd>
 
             <dt className="text-gray-500">스토어 수수료 (5.63%)</dt>
             <dd className="text-right text-gray-900">-{currency(preview.storeFee)}</dd>
