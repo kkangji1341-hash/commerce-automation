@@ -3,5 +3,13 @@ from app.models.user import User
 from app.models.keyword import KeywordAnalysis
 from app.models.product import RecommendedProduct
 from app.models.calculation import ProductCalculation
+from app.models.brand import BrandName
 
-__all__ = ["Base", "User", "KeywordAnalysis", "RecommendedProduct", "ProductCalculation"]
+__all__ = [
+    "Base",
+    "User",
+    "KeywordAnalysis",
+    "RecommendedProduct",
+    "ProductCalculation",
+    "BrandName",
+]

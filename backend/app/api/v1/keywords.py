@@ -49,5 +49,8 @@ async def keyword_history(
 
 
 @router.post("/analyze-and-generate", response_model=AnalyzeAndGenerateResponse)
-async def analyze_and_generate_products(request: AnalyzeAndGenerateRequest):
-    return await analyze_and_generate(request.keyword)
+async def analyze_and_generate_products(
+    request: AnalyzeAndGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await analyze_and_generate(request.keyword, db)

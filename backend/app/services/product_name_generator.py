@@ -32,7 +32,10 @@
 import asyncio
 from typing import List, Optional, TypedDict
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.crawlers.keyword_crawler import fetch_related_keywords
+from app.services.brand_service import get_dynamic_brand_names
 
 COMPETITION_PENALTY = {"LOW": 10, "MEDIUM": 20, "HIGH": 30}
 
@@ -92,19 +95,25 @@ class NameCandidate(TypedDict):
     score: float
 
 
-def _contains_brand_name(variant: str) -> bool:
+def _contains_brand_name(variant: str, extra_brands: set[str] = frozenset()) -> bool:
     lowered = variant.lower()
-    return any(brand in lowered for brand in KNOWN_BRAND_NAMES)
+    if any(brand in lowered for brand in KNOWN_BRAND_NAMES):
+        return True
+    return any(brand in lowered for brand in extra_brands)
 
 
-def filter_brand_names(variants: List[KeywordVariant]) -> List[KeywordVariant]:
+def filter_brand_names(
+    variants: List[KeywordVariant], extra_brands: set[str] = frozenset()
+) -> List[KeywordVariant]:
     """세부 키워드 중 알려진 브랜드명이 포함된 것을 제거한다.
 
     브랜드명이 섞인 세부 키워드로 상품명을 만들면 그 브랜드 상품이 아니면
     팔 수 없는 제목이 나온다. select_top_variants로 점수를 매기기 전, 원본
-    후보군 단계에서 미리 걸러낸다.
+    후보군 단계에서 미리 걸러낸다. extra_brands는 brand_service가 네이버
+    쇼핑에서 동적으로 수집/신고받아 DB에 쌓은 브랜드명 — 코드에 하드코딩된
+    KNOWN_BRAND_NAMES만으로는 계속 새 브랜드가 새어나가기 때문에 함께 쓴다.
     """
-    return [v for v in variants if not _contains_brand_name(v["keyword"])]
+    return [v for v in variants if not _contains_brand_name(v["keyword"], extra_brands)]
 
 
 def calculate_competitiveness_score(
@@ -226,9 +235,10 @@ def generate_final_title(main_keyword: str, top_candidates: List[NameCandidate])
     return f"{base_variant} " + " ".join(tokens)
 
 
-async def analyze_and_generate(keyword: str, top_n: int = 6) -> dict:
+async def analyze_and_generate(keyword: str, db: AsyncSession, top_n: int = 6) -> dict:
     raw_variants = await asyncio.to_thread(fetch_related_keywords, keyword)
-    variants = filter_brand_names(raw_variants)
+    dynamic_brands = await get_dynamic_brand_names(db)
+    variants = filter_brand_names(raw_variants, dynamic_brands)
     brand_filtered_count = len(raw_variants) - len(variants)
     top_variants = select_top_variants(variants, top_n=top_n)
 

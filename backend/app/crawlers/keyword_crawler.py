@@ -249,6 +249,46 @@ def _validate_and_normalize_naver_product(item: dict) -> Optional[dict]:
         return None
 
 
+def fetch_naver_shopping_brands(keyword: str, display: int = 100) -> List[str]:
+    """네이버 쇼핑 검색 결과 상위 상품들의 실제 브랜드명을 가져온다.
+
+    브랜드명 자동 수집(동적 브랜드 DB 구축)에 쓰인다. mallName은 "네이버",
+    "쿠팡" 같은 판매 채널/오픈마켓 스토어명이라 브랜드가 아니다 — 반드시
+    item의 brand/maker 필드를 써야 한다(실측 확인: 무선이어폰 검색 시
+    mallName="네이버", brand="베이스어스"). brand가 비어있으면 maker로
+    대체하고, 둘 다 없으면 건너뛴다. 실패 시 예외 없이 빈 리스트.
+    """
+    client_id = os.getenv("NAVER_SEARCH_CLIENT_ID")
+    client_secret = os.getenv("NAVER_SEARCH_CLIENT_SECRET")
+    if not (client_id and client_secret):
+        logger.warning("NAVER_SEARCH_CLIENT_ID/SECRET 미설정 — 브랜드 수집 건너뜀")
+        return []
+
+    headers = {"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret}
+    try:
+        response = requests.get(
+            f"{NAVER_OPENAPI_BASE_URL}/v1/search/shop.json",
+            headers=headers,
+            params={"query": keyword, "display": min(display, 100), "sort": "sim"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        items = response.json().get("items", [])
+    except requests.exceptions.RequestException as exc:
+        logger.warning("네이버 쇼핑 브랜드 수집 실패: keyword=%r, %s", keyword, exc)
+        return []
+    except ValueError as exc:
+        logger.warning("네이버 쇼핑 브랜드 응답 파싱 실패: keyword=%r, %s", keyword, exc)
+        return []
+
+    brands: set = set()
+    for item in items:
+        brand = (item.get("brand") or item.get("maker") or "").strip()
+        if len(brand) > 1:
+            brands.add(brand)
+    return sorted(brands)
+
+
 # ==================== 3. 절대 월간 검색량 (네이버 검색광고 API) ====================
 
 def _naver_ad_signature(timestamp: str, method: str, uri: str, secret_key: str) -> str:

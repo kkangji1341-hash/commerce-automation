@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Button from "@/components/Common/Button";
-import { analyzeAndGenerate, createCalculation, fetchKeywordAuto } from "@/lib/api";
+import { analyzeAndGenerate, createCalculation, fetchKeywordAuto, reportBrandName } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import type { AnalyzeAndGenerateResponse } from "@/lib/types";
 
@@ -74,6 +74,21 @@ export default function VariantExplorer() {
       toast.error(getErrorMessage(err, "마진 계산 저장 중 오류가 발생했습니다"));
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleReportBrand() {
+    const name = window.prompt("최종 제목에 남아있는 브랜드명을 입력해주세요 (예: 삼성)");
+    if (!name || !name.trim()) return;
+    try {
+      const res = await reportBrandName(name.trim());
+      if (res.added) {
+        toast.success("브랜드명을 추가했습니다. 다음 분석부터 자동으로 제외됩니다");
+      } else {
+        toast(res.message);
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, "브랜드명 신고에 실패했습니다"));
     }
   }
 
@@ -172,6 +187,13 @@ export default function VariantExplorer() {
           <div className="rounded-xl border border-primary-100 bg-primary-50 p-4 text-center">
             <p className="text-xs text-gray-500">🎯 최종 상품명 (중복 단어 자동 제거)</p>
             <p className="mt-1 text-lg font-bold text-primary-700">{result.final_title}</p>
+            <button
+              type="button"
+              onClick={handleReportBrand}
+              className="mt-2 text-xs text-gray-400 underline hover:text-gray-600"
+            >
+              브랜드명이 남아있나요? 신고하기
+            </button>
           </div>
 
           <Button onClick={handleCalculateFinalTitle} isLoading={isSaving} className="w-full">

@@ -192,4 +192,9 @@ export async function hideCalculation(id: number): Promise<ProductCalculation> {
   return data;
 }
 
+export async function reportBrandName(name: string): Promise<{ added: boolean; message: string }> {
+  const { data } = await client.post<{ added: boolean; message: string }>("/brands/report", { name });
+  return data;
+}
+
 export default client;
