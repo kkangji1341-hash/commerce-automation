@@ -101,7 +101,16 @@ class KeywordVariantResponse(BaseModel):
     score: float
 
 
+class NameCandidateResponse(BaseModel):
+    name: str
+    variant: str
+    modifier: str
+    score: float
+
+
 class AnalyzeAndGenerateResponse(BaseModel):
     main_keyword: str
     top_variants: List[KeywordVariantResponse]
-    generated_product_names: List[str]
+    total_candidates_generated: int
+    top_candidates: List[NameCandidateResponse]
+    final_title: str

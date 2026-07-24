@@ -144,10 +144,19 @@ export interface KeywordVariant {
   score: number;
 }
 
+export interface NameCandidate {
+  name: string;
+  variant: string;
+  modifier: string;
+  score: number;
+}
+
 export interface AnalyzeAndGenerateResponse {
   main_keyword: string;
   top_variants: KeywordVariant[];
-  generated_product_names: string[];
+  total_candidates_generated: number;
+  top_candidates: NameCandidate[];
+  final_title: string;
 }
 
 export interface ProductCalculationInput {

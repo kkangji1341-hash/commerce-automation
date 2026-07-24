@@ -25,9 +25,7 @@ export default function VariantExplorer() {
   const [keyword, setKeyword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AnalyzeAndGenerateResponse | null>(null);
-  const [checked, setChecked] = useState<boolean[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveProgress, setSaveProgress] = useState<string | null>(null);
 
   async function handleAnalyze() {
     if (!keyword.trim()) {
@@ -43,7 +41,6 @@ export default function VariantExplorer() {
         return;
       }
       setResult(res);
-      setChecked(res.top_variants.map(() => true));
     } catch (err) {
       toast.error(getErrorMessage(err, "세부 키워드 분석에 실패했습니다"));
     } finally {
@@ -51,51 +48,32 @@ export default function VariantExplorer() {
     }
   }
 
-  function toggle(idx: number) {
-    setChecked((prev) => prev.map((v, i) => (i === idx ? !v : v)));
-  }
-
-  async function handleBulkCalculate() {
+  async function handleCalculateFinalTitle() {
     if (!result) return;
-    const selected = result.top_variants
-      .map((variant, idx) => ({ variant, name: result.generated_product_names[idx], idx }))
-      .filter((_, idx) => checked[idx]);
-
-    if (selected.length === 0) {
-      toast.error("상품명을 하나 이상 선택해주세요");
-      return;
-    }
-
     setIsSaving(true);
-    let successCount = 0;
     try {
-      for (const { variant, name } of selected) {
-        setSaveProgress(`${name} 계산 중...`);
-        let cost = DEFAULT_COST_FALLBACK;
-        try {
-          const auto = await fetchKeywordAuto(variant.keyword);
-          if (auto.avg_price) cost = Math.max(1, Math.round(auto.avg_price * AUTO_COST_RATIO));
-        } catch {
-          // 원가 자동조회 실패해도 기본값으로 계속 진행 (전체 흐름을 막지 않음)
-        }
-        await createCalculation({
-          product_name: name,
-          cost,
-          cost_shipping: 3000,
-          selling_shipping: 3000,
-          margin_rate: DEFAULT_MARGIN_RATE,
-          ad_cost: 50,
-          benefits_cost: 0,
-        });
-        successCount += 1;
+      let cost = DEFAULT_COST_FALLBACK;
+      try {
+        const auto = await fetchKeywordAuto(result.main_keyword);
+        if (auto.avg_price) cost = Math.max(1, Math.round(auto.avg_price * AUTO_COST_RATIO));
+      } catch {
+        // 원가 자동조회 실패해도 기본값으로 계속 진행 (전체 흐름을 막지 않음)
       }
-      toast.success(`${successCount}개 상품의 마진 계산을 저장했습니다`);
+      await createCalculation({
+        product_name: result.final_title,
+        cost,
+        cost_shipping: 3000,
+        selling_shipping: 3000,
+        margin_rate: DEFAULT_MARGIN_RATE,
+        ad_cost: 50,
+        benefits_cost: 0,
+      });
+      toast.success("마진 계산을 저장했습니다");
       router.push("/my-calculations");
     } catch (err) {
       toast.error(getErrorMessage(err, "마진 계산 저장 중 오류가 발생했습니다"));
     } finally {
       setIsSaving(false);
-      setSaveProgress(null);
     }
   }
 
@@ -161,24 +139,26 @@ export default function VariantExplorer() {
           </p>
 
           <div>
-            <p className="mb-2 text-sm font-semibold text-gray-700">추천 상품명 (자동 생성)</p>
-            <div className="flex flex-col gap-2">
-              {result.generated_product_names.map((name, i) => (
-                <label key={name} className="flex min-h-[44px] items-center gap-2 rounded-lg bg-gray-50 px-3">
-                  <input
-                    type="checkbox"
-                    checked={checked[i] ?? false}
-                    onChange={() => toggle(i)}
-                    className="h-5 w-5"
-                  />
-                  <span className="text-sm text-gray-900">{name}</span>
-                </label>
+            <p className="mb-2 text-sm font-semibold text-gray-700">
+              상위 6개 후보 선택됨 (후보 {result.total_candidates_generated}개 중)
+            </p>
+            <div className="flex flex-col gap-1">
+              {result.top_candidates.map((c) => (
+                <div key={c.name} className="flex min-h-[36px] items-center gap-2 rounded-lg bg-gray-50 px-3">
+                  <span className="text-primary-500">✓</span>
+                  <span className="text-sm text-gray-900">{c.name}</span>
+                </div>
               ))}
             </div>
           </div>
 
-          <Button onClick={handleBulkCalculate} isLoading={isSaving} className="w-full">
-            {saveProgress ?? "선택한 상품들로 마진계산하기"}
+          <div className="rounded-xl border border-primary-100 bg-primary-50 p-4 text-center">
+            <p className="text-xs text-gray-500">🎯 최종 상품명 (중복 단어 자동 제거)</p>
+            <p className="mt-1 text-lg font-bold text-primary-700">{result.final_title}</p>
+          </div>
+
+          <Button onClick={handleCalculateFinalTitle} isLoading={isSaving} className="w-full">
+            이 제목으로 마진계산하기
           </Button>
         </div>
       )}
