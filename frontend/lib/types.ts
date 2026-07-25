@@ -197,3 +197,11 @@ export interface MyCalculationsResponse {
   items: ProductCalculation[];
   total: number;
 }
+
+export interface OnchCollectResponse {
+  product_name: string;
+  product_code: string | null;
+  source_url: string;
+  images: string[];
+  total_images: number;
+}

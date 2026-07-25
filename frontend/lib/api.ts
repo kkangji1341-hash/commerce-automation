@@ -8,6 +8,7 @@ import type {
   LoginInput,
   MyCalculationsResponse,
   MyProductsResponse,
+  OnchCollectResponse,
   ProductCalculation,
   ProductCalculationInput,
   ProductRecommendInput,
@@ -195,6 +196,27 @@ export async function hideCalculation(id: number): Promise<ProductCalculation> {
 export async function reportBrandName(name: string): Promise<{ added: boolean; message: string }> {
   const { data } = await client.post<{ added: boolean; message: string }>("/brands/report", { name });
   return data;
+}
+
+export async function collectOnchProduct(url: string): Promise<OnchCollectResponse> {
+  const { data } = await client.post<OnchCollectResponse>("/onch/collect", { url });
+  return data;
+}
+
+export async function downloadOnchZip(imageUrls: string[], productName: string): Promise<void> {
+  const response = await client.post(
+    "/onch/download-zip",
+    { image_urls: imageUrls, product_name: productName },
+    { responseType: "blob" }
+  );
+  const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = `${productName || "상품이미지"}.zip`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
 }
 
 export default client;
