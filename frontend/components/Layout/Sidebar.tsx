@@ -9,7 +9,8 @@ const NAV_ITEMS = [
   { href: "/keywords", label: "키워드 분석", icon: "🔍" },
   { href: "/calculator", label: "마진 계산기", icon: "🧮" },
   { href: "/products", label: "상품 추천 (참고용)", icon: "📦" },
-  { href: "/product-details-collector", label: "상세페이지 수집기", icon: "🖼️" },
+  { href: "/product-details-collector", label: "상세페이지 수집기 (온채널)", icon: "🖼️" },
+  { href: "/bookmarklet-guide", label: "이미지 수집 북마크렛", icon: "🔖" },
   { href: "/my-products", label: "마이페이지", icon: "👤" },
 ];
 

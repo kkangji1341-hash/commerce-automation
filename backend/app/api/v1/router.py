@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, brands, calculations, keywords, onch, products
+from app.api.v1 import auth, brands, calculations, keywords, onch, products, scrape
 
 api_router = APIRouter()
 
@@ -12,3 +12,4 @@ api_router.include_router(products.router, prefix="/products", tags=["products"]
 api_router.include_router(calculations.router, prefix="/calculations", tags=["calculations"])
 api_router.include_router(brands.router, prefix="/brands", tags=["brands"])
 api_router.include_router(onch.router, prefix="/onch", tags=["onch"])
+api_router.include_router(scrape.router, prefix="/scrape", tags=["scrape"])
