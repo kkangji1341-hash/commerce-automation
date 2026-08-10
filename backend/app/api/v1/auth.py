@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.rate_limit import RateLimiter
 from app.core.security import create_access_token, verify_token
 from app.db.session import get_db
 from app.models.user import User
@@ -25,8 +26,18 @@ from app.services.user_service import (
 
 router = APIRouter()
 
+# 로그인 무차별 대입 공격 방지: IP당 5분에 5회.
+_login_rate_limit = RateLimiter(max_requests=5, window_seconds=300)
+# 스팸 계정 생성 방지: IP당 1시간에 5회.
+_signup_rate_limit = RateLimiter(max_requests=5, window_seconds=3600)
 
-@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/signup",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_signup_rate_limit)],
+)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     try:
         user = await create_user(db, user_in)
@@ -35,7 +46,7 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     return user
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[Depends(_login_rate_limit)])
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     user = await authenticate_user(db, credentials.email, credentials.password)
     if not user:
