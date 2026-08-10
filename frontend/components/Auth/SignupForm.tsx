@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/errors";
@@ -12,11 +13,16 @@ export default function SignupForm({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!agreed) {
+      setError("이용약관 및 개인정보처리방침에 동의해주세요");
+      return;
+    }
     setError(null);
     setIsLoading(true);
     try {
@@ -71,6 +77,25 @@ export default function SignupForm({ onSuccess }: { onSuccess: () => void }) {
           placeholder="(주)커머스오토메이션"
         />
       </div>
+
+      <label className="flex min-h-[44px] items-center gap-2 text-sm text-gray-600">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          className="h-5 w-5"
+        />
+        <span>
+          <Link href="/terms" target="_blank" className="text-primary-600 underline">
+            이용약관
+          </Link>{" "}
+          및{" "}
+          <Link href="/privacy" target="_blank" className="text-primary-600 underline">
+            개인정보처리방침
+          </Link>
+          에 동의합니다
+        </span>
+      </label>
 
       <Button type="submit" isLoading={isLoading} className="w-full">
         회원가입
