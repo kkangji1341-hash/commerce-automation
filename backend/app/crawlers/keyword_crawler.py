@@ -12,6 +12,12 @@
 - 상위 10개 상품 리뷰 수: 어떤 공식 네이버 API에도 리뷰 수 필드가 없다.
   실제 값을 얻으려면 네이버 쇼핑 페이지를 직접 크롤링해야 하는데, 이는 네이버
   이용약관 위반 소지가 있어 Phase 2에서 보류한 부분이다. 여기서는 계속 None.
+
+캐싱: 네이버 API 크리덴셜은 모든 사용자가 공유하는 앱 전역 키라, 같은
+키워드를 여러 사용자가 짧은 시간 안에 조회하면 매번 실시간 재호출이 나가
+네이버 쪽 호출 제한에 걸릴 수 있다. 검색량/연관키워드(자주 안 바뀌는 월간
+집계 데이터)는 12시간, 쇼핑 평균가/상품 목록(가격 변동 가능)은 3시간 캐시한다.
+실패 응답(None/빈 리스트)은 캐시하지 않는다 — app/core/simple_cache.py 참고.
 """
 
 import base64
@@ -28,9 +34,14 @@ import requests
 from dotenv import load_dotenv
 from pytrends.request import TrendReq
 
+from app.core.simple_cache import ttl_cache
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+_TWELVE_HOURS = 12 * 60 * 60
+_THREE_HOURS = 3 * 60 * 60
 
 NAVER_AD_BASE_URL = "https://api.searchad.naver.com"
 NAVER_AD_KEYWORDSTOOL_URI = "/keywordstool"
@@ -131,6 +142,7 @@ def fetch_search_trend(keyword: str, months: int = 12) -> tuple:
 
 # ==================== 2. 네이버 쇼핑 검색 (평균가 / 판매자 수 proxy) ====================
 
+@ttl_cache(ttl_seconds=_THREE_HOURS)
 def fetch_naver_shopping_snapshot(keyword: str, top_n: int = 10) -> dict:
     """
     네이버 검색 API(쇼핑)로 상위 `top_n`개 상품을 조회해 평균가/고유 판매자 수를 계산한다.
@@ -166,6 +178,7 @@ _MIN_REASONABLE_PRICE = 100
 _MAX_REASONABLE_PRICE = 10_000_000
 
 
+@ttl_cache(ttl_seconds=_THREE_HOURS)
 def fetch_naver_shopping_products(keyword: str, limit: int = 10) -> List[dict]:
     """
     네이버 검색 API(쇼핑)로 키워드에 실제로 잡히는 판매 중 상품 목록을 가져온다
@@ -316,6 +329,7 @@ def _parse_naver_count(value) -> int:
     return int(value)
 
 
+@ttl_cache(ttl_seconds=_TWELVE_HOURS, cache_if=lambda r: r is not None)
 def fetch_naver_monthly_searches(keyword: str) -> Optional[int]:
     """
     네이버 검색광고 API(키워드 도구)로 절대 월간 검색량(PC+모바일)을 가져온다.
@@ -357,6 +371,7 @@ def fetch_naver_monthly_searches(keyword: str) -> Optional[int]:
 _COMPETITION_MAP = {"낮음": "LOW", "중간": "MEDIUM", "높음": "HIGH"}
 
 
+@ttl_cache(ttl_seconds=_TWELVE_HOURS)
 def fetch_related_keywords(keyword: str, limit: int = 30) -> List[dict]:
     """
     네이버 검색광고 API(키워드 도구)로 시드 키워드의 실제 세부/연관 키워드를 가져온다.
